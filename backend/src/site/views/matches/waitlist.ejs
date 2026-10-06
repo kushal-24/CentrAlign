@@ -1,0 +1,44 @@
+<%- include('../partials/header') %>
+
+<a class="back-link" href="/matches/<%= match._id %>">← Back to event</a>
+
+<section class="page-heading small">
+  <p class="eyebrow">STAY IN THE RUNNING</p>
+  <h1>Keep your place <em>in line.</em></h1>
+  <p>Join the event queue when there aren’t enough seats for your request.</p>
+</section>
+
+<div class="action-layout">
+  <section class="panel action-form">
+    <h2>Join waitlist</h2>
+    <%- include('../partials/form-feedback', { error }) %>
+
+    <form class="stack-form" action="/matches/<%= match._id %>/waitlist" method="post">
+      <div class="field">
+        <label for="quantity">Number of tickets</label>
+        <input id="quantity" name="quantity" type="number" min="1" max="<%= match.perBookingLimit %>" step="1" value="<%= values.quantity %>" required>
+        <small>Maximum <%= match.perBookingLimit %> tickets. Currently <%= match.remaining %> seats available.</small>
+      </div>
+
+      <label class="checkbox-field" for="confirm">
+        <input id="confirm" name="confirm" type="checkbox" value="yes" <%= values.confirm === 'yes' ? 'checked' : '' %> required>
+        <span>I confirm this event and quantity. Joining the waitlist does not reserve tickets.</span>
+      </label>
+
+      <button class="button button-dark" type="submit" data-risk="irreversible">
+        Join waitlist <span aria-hidden="true">↗</span>
+      </button>
+    </form>
+  </section>
+
+  <aside class="panel action-summary">
+    <p class="eyebrow"><%= match.sport %> / <%= match.competition %></p>
+    <h2><%= match.title %></h2>
+    <p><%= match.venue %><br><%= match.city %>, <%= match.country %></p>
+    <p><%= match.displayTime %></p>
+    <p class="availability-note">Your queue position will appear in My Bookings, with a confirmation in Inbox. Joining does not guarantee entry or automatically book a ticket.</p>
+    <a class="text-link" href="/matches/<%= match._id %>/book">Book available seats instead ↗</a>
+  </aside>
+</div>
+
+<%- include('../partials/footer') %>

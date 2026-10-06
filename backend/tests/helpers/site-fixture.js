@@ -42,6 +42,9 @@ export function installSiteFixture(mock) {
         const query = (filter, single) => {
             let order = {};
             return {
+                session() {
+                    return this;
+                },
                 sort(sort) {
                     order = sort;
                     return this;

@@ -36,6 +36,11 @@ export const pageContext = asyncHandler(async (req, res, next) => {
     if (mongoose.connection.readyState !== 1)
         throw new apiError(503, "MatchDay is temporarily unavailable. Please try again shortly.");
     res.locals.now = await getNow();
+
+    if (validId(req.cookies?.uid)) {
+        res.locals.user = await User.findById(req.cookies.uid).lean();
+    }
+
     next();
 });
 
@@ -43,7 +48,7 @@ export const requireUser = asyncHandler(async (req, res, next) => {
     const uid = req.cookies?.uid;
     if (!validId(uid))
         throw new apiError(401, "Open your demo session to view your tickets and messages.");
-    const user = await User.findById(uid).lean();
+    const user = res.locals.user;
     if (!user)
         throw new apiError(
             401,

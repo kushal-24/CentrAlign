@@ -1,0 +1,32 @@
+<%- include('../partials/header') %>
+<script src="/js/booking-form.js" defer></script>
+<a class="back-link" href="/matches/<%= match._id %>">← Back to event</a>
+<section class="page-heading small"><p class="eyebrow">YOUR PLACE IN THE CROWD</p><h1><%= match.isFree ? 'A free seat.' : 'Make it a' %> <em><%= match.isFree ? 'A great day.' : 'matchday.' %></em></h1><p><%= match.isFree ? 'Reserve your fan-arena screening entry.' : 'A few details, then you’re part of the crowd.' %></p></section>
+<div class="action-layout">
+<section class="panel action-form"><h2><%= match.isFree ? 'Reserve free entry' : 'Book tickets' %></h2><%- include('../partials/form-feedback', { error }) %>
+<form action="/matches/<%= match._id %>/book" method="post" class="stack-form" data-booking-price="<%= match.price %>">
+  <div class="field">
+    <label for="quantity">Number of tickets</label>
+    <input id="quantity" name="quantity" type="number" min="1" max="<%= match.perBookingLimit %>" step="1" value="<%= values.quantity %>" required>
+    <small>Up to <%= match.perBookingLimit %> tickets per booking. <%= match.remaining %> seats remain.</small>
+  </div>
+  <div class="field">
+    <label for="ownerName">Attendee name</label>
+    <input id="ownerName" name="ownerName" autocomplete="name" maxlength="160" value="<%= values.ownerName %>" required>
+  </div>
+  <div class="field">
+    <label for="ownerEmail">Attendee email</label>
+    <input id="ownerEmail" name="ownerEmail" type="email" autocomplete="email" maxlength="160" value="<%= values.ownerEmail %>" required>
+  </div>
+  <div class="field">
+    <label for="phone">Attendee phone</label>
+    <input id="phone" name="phone" type="tel" autocomplete="tel" maxlength="16" pattern="\+?[1-9][0-9]{6,14}" value="<%= values.phone %>" required>
+    <small>Include your country code, e.g. +919000000001.</small>
+  </div>
+  <label class="checkbox-field" for="confirm"><input id="confirm" type="checkbox" name="confirm" value="yes" <%= values.confirm === 'yes' ? 'checked' : '' %> required><span>I confirm the event, ticket quantity, attendee details and refund policy.</span></label>
+  <div class="form-total"><span>Total <small>Calculated from the event ticket price.</small></span><output id="booking-total" for="quantity"><%= formatMoney(match.price * (Number.isSafeInteger(Number(values.quantity)) && Number(values.quantity) > 0 ? Number(values.quantity) : 1)) %></output></div>
+  <button class="button button-dark" type="submit" data-risk="irreversible">Confirm booking <span aria-hidden="true">↗</span></button>
+</form></section>
+<aside class="panel action-summary"><p class="eyebrow"><%= match.sport %> / <%= match.competition %></p><h2><%= match.title %></h2><p><%= match.venue %><br><%= match.city %>, <%= match.country %></p><p><%= match.displayTime %></p><span class="status-badge badge-<%= match.status %>"><%= match.status %></span><dl class="compact-facts"><div><dt>Per ticket</dt><dd><%= formatMoney(match.price) %></dd></div><div><dt>Remaining</dt><dd><%= match.remaining %> seats</dd></div></dl><h3>Refund policy</h3><p class="policy-copy"><%= match.policyText %></p><% if (match.bookingStatus === 'postponed' || match.status !== 'upcoming') { %><p class="form-alert alert-error" role="alert"><%= match.bookingStatus === 'postponed' ? 'This event is postponed. Bookings are on hold.' : 'Bookings are closed for this event.' %></p><% } %></aside>
+</div>
+<%- include('../partials/footer') %>

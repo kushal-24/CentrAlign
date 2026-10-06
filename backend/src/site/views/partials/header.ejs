@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/components.css">
   <link rel="stylesheet" href="/css/pages.css">
+  <link rel="stylesheet" href="/css/forms.css">
   <script src="/js/navigation.js" defer></script>
 </head>
 <body>
@@ -19,6 +20,13 @@
       <a href="/matches" <%- currentPath.startsWith('/matches') ? 'aria-current="page"' : '' %>>Discover</a>
       <a href="/bookings" <%- currentPath.startsWith('/bookings') ? 'aria-current="page"' : '' %>>My bookings</a>
       <a href="/inbox" <%- currentPath === '/inbox' ? 'aria-current="page"' : '' %>>Inbox</a>
+      <% if (user) { %>
+      <a href="/profile" <%- currentPath === '/profile' ? 'aria-current="page"' : '' %>>My Profile</a>
+      <span class="session-name"><%= user.name %></span>
+      <form class="session-control" action="/session/close" method="post"><button class="session-button" type="submit">Close demo session</button></form>
+      <% } else { %>
+      <form class="session-control" action="/session/demo" method="post"><button class="session-button" type="submit">Open demo session</button></form>
+      <% } %>
     </nav>
     <span class="header-note">For the love of the game.</span>
   </header>

@@ -13,6 +13,9 @@ import bookingsRouter from "./routes/bookings/bookings.routes.js";
 import inboxRouter from "./routes/inbox/inbox.routes.js";
 import { pageDefaults, pageContext } from "./middleware/page-context.js";
 
+import profileRouter from "./routes/profile/profile.routes.js";
+import sessionRouter from "./routes/session/session.routes.js";
+
 export const app = express();
 app.set("view engine", "ejs");
 app.set("views", fileURLToPath(new URL("./views", import.meta.url)));
@@ -28,7 +31,7 @@ app.get("/health", (req, res) => {
     const status = connected ? 200 : 503;
     res.status(status).json(
         new apiResponse(
-            { service: "MatchDay", phase: 3, database: connected ? "connected" : "disconnected" },
+            { service: "MatchDay", phase: 4, database: connected ? "connected" : "disconnected" },
             status,
         ),
     );
@@ -40,6 +43,8 @@ app.use(pageContext);
 app.use("/matches", matchesRouter);
 app.use("/bookings", bookingsRouter);
 app.use("/inbox", inboxRouter);
+app.use("/profile", profileRouter);
+app.use("/session", sessionRouter);
 app.use((req, res, next) => next(new apiError(404, "This page could not be found.")));
 
 app.use((error, req, res, next) => {

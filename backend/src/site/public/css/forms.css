@@ -1,0 +1,223 @@
+.action-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+}
+.action-form h2 {
+    font-size: 27px;
+    margin-bottom: 28px;
+}
+.stack-form {
+    display: grid;
+    gap: 23px;
+}
+.stack-form .field label {
+    font-size: 12px;
+    margin-bottom: 9px;
+}
+.stack-form .field input {
+    height: 48px;
+    font-size: 14px;
+}
+.stack-form .field small {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+}
+.checkbox-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 12px;
+    color: #526653;
+    cursor: pointer;
+}
+.checkbox-field input {
+    width: 18px;
+    height: 18px;
+    margin: 2px 0 0;
+    flex-shrink: 0;
+    accent-color: var(--ink);
+}
+.form-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    font-weight: 650;
+}
+.form-total small {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--muted);
+    margin-top: 4px;
+}
+.form-total output {
+    font-size: 30px;
+    letter-spacing: -0.04em;
+}
+.action-summary {
+    background: linear-gradient(140deg, #edf2e2, #e5ede2);
+    overflow-wrap: anywhere;
+}
+.action-summary h2 {
+    font-size: 29px;
+}
+.action-summary > p {
+    font-size: 13px;
+    color: #5c7059;
+}
+.action-summary .compact-facts {
+    margin: 24px 0;
+}
+.action-summary h3 {
+    font-size: 18px;
+    margin-top: 28px;
+}
+.action-summary .policy-copy {
+    font-size: 12px;
+}
+.form-alert {
+    border-radius: 10px;
+    padding: 15px 18px;
+    font-size: 13px;
+    margin: 0 0 22px;
+    overflow-wrap: anywhere;
+}
+.form-alert p {
+    margin: 5px 0 0;
+}
+.alert-error {
+    background: #f5e5d5;
+    color: #784b2e;
+    border: 1px solid #e8ccb5;
+}
+.alert-success {
+    background: #e3edd7;
+    color: #345a30;
+    border: 1px solid #c9ddba;
+}
+.profile-monogram {
+    width: 70px;
+    height: 70px;
+    border-radius: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--ink);
+    color: var(--mint);
+    font-size: 37px;
+    margin-bottom: 24px;
+}
+.session-control {
+    margin: 0;
+}
+.session-button {
+    border: 1px solid #cad6c0;
+    background: transparent;
+    color: #466240;
+    border-radius: 20px;
+    font-size: 10px;
+    padding: 8px 12px;
+    white-space: nowrap;
+}
+.session-button:hover {
+    background: #e0ead7;
+}
+.session-name {
+    font-size: 11px;
+    font-weight: 650;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.event-actions {
+    display: grid;
+    gap: 12px;
+    margin-top: 25px;
+}
+.cancellation-panel {
+    margin-top: 28px;
+}
+.cancellation-panel h2 {
+    font-size: 24px;
+}
+.cancellation-panel .stack-form {
+    gap: 18px;
+}
+.cancellation-panel .button {
+    justify-self: start;
+    background: #684634;
+}
+.cancellation-panel .button:hover {
+    background: #7b533e;
+}
+.cancel-refund {
+    font-size: 15px;
+}
+.cancel-refund strong {
+    font-size: 23px;
+}
+.stack-form input[readonly] {
+    background: #e6ebdf;
+    color: #6d7865;
+}
+.action-form .button {
+    justify-self: start;
+}
+.site-nav {
+    flex-wrap: wrap;
+}
+.site-header {
+    gap: 24px;
+}
+.site-nav {
+    gap: 4px;
+}
+.site-nav a {
+    padding-inline: 12px;
+}
+.header-note {
+    display: none;
+}
+@media (max-width: 1000px) {
+    .session-name {
+        display: none;
+    }
+    .site-header {
+        gap: 12px;
+    }
+    .site-nav a {
+        padding-inline: 9px;
+        font-size: 12px;
+    }
+}
+@media (max-width: 760px) {
+    .action-layout {
+        grid-template-columns: 1fr;
+    }
+    .action-form .button {
+        width: 100%;
+    }
+    .site-nav {
+        row-gap: 12px;
+    }
+    .site-nav a {
+        padding-inline: 10px;
+    }
+    .session-control {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+    .action-summary h2 {
+        font-size: 25px;
+    }
+    .cancellation-panel .button {
+        width: 100%;
+        justify-self: stretch;
+    }
+}

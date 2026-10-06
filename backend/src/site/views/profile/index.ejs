@@ -1,0 +1,44 @@
+<%- include('../partials/header') %>
+
+<section class="page-heading">
+  <p class="eyebrow">A LITTLE ABOUT YOU</p>
+  <h1>Your matchday <em>profile.</em></h1>
+  <p>Keep your contact details ready for your next game.</p>
+</section>
+
+<div class="action-layout">
+  <section class="panel action-form">
+    <h2>Personal details</h2>
+    <%- include('../partials/form-feedback', { error, success: saved ? 'Your saved profile details are shown below.' : null }) %>
+
+    <form class="stack-form" action="/profile" method="post">
+      <div class="field">
+        <label for="name">Name</label>
+        <input id="name" name="name" autocomplete="name" maxlength="160" value="<%= values.name %>" required>
+      </div>
+
+      <div class="field">
+        <label for="phone">Phone number</label>
+        <input id="phone" name="phone" type="tel" autocomplete="tel" pattern="\+?[1-9][0-9]{6,14}" maxlength="16" value="<%= values.phone %>" required>
+        <small>Include your country code.</small>
+      </div>
+
+      <div class="field">
+        <label for="email">Email address</label>
+        <input id="email" type="email" value="<%= user.email %>" readonly aria-describedby="email-note">
+        <small id="email-note">Your email identifies this demo account and cannot be edited.</small>
+      </div>
+
+      <button class="button button-dark" type="submit" data-risk="irreversible">Save profile ↗</button>
+    </form>
+  </section>
+
+  <aside class="panel action-summary">
+    <span class="profile-monogram" aria-hidden="true"><%= user.name.charAt(0).toUpperCase() %></span>
+    <h2><%= user.name %></h2>
+    <p><%= user.email %></p>
+    <p class="availability-note">New booking forms use your current contact details. Existing tickets keep the attendee details entered when they were booked.</p>
+  </aside>
+</div>
+
+<%- include('../partials/footer') %>

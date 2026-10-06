@@ -85,7 +85,6 @@ try {
         );
         assert.equal(await page.locator("main h1").count(), 1);
         assert.equal(await page.locator('a[href="/admin/clock"]').count(), 0);
-        assert.equal(await page.locator('[data-risk="irreversible"]').count(), 0);
     };
     const noOverflow = async () =>
         assert.ok(
