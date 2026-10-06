@@ -1,0 +1,14 @@
+<div class="sport-art art-<%= sport %>" aria-hidden="true">
+  <span class="art-orbit orbit-one"></span><span class="art-orbit orbit-two"></span>
+  <svg viewBox="0 0 320 200" focusable="false">
+  <% if (sport === 'football') { %>
+    <rect x="50" y="35" width="220" height="130" rx="3"/><path d="M160 35v130M50 68h35v64H50M270 68h-35v64h35"/><circle cx="160" cy="100" r="30"/><circle class="art-ball" cx="206" cy="126" r="15"/>
+  <% } else if (sport === 'tennis') { %>
+    <rect x="58" y="30" width="204" height="140" rx="3"/><path d="M58 100h204M80 30v140M240 30v140M80 65h160M80 135h160M160 65v70"/><circle class="art-ball" cx="210" cy="60" r="15"/><path class="ball-seam" d="M202 47q22 14 5 26"/>
+  <% } else if (sport === 'cricket') { %>
+    <ellipse cx="160" cy="100" rx="110" ry="76"/><rect x="139" y="45" width="42" height="110" rx="4"/><path d="M147 55h26M147 145h26M147 55v10M160 55v10M173 55v10M147 135v10M160 135v10M173 135v10"/><circle class="art-ball" cx="216" cy="115" r="16"/><path class="ball-seam" d="M207 102l17 26"/>
+  <% } else { %>
+    <rect x="55" y="30" width="210" height="140" rx="3"/><path d="M55 100h210M75 30v140M245 30v140M75 70h170M75 130h170M160 30v40M160 130v40"/><path class="art-shuttle" d="M199 60l-18-30 14-6 16 6-6 30z"/><circle class="art-ball" cx="202" cy="63" r="8"/>
+  <% } %>
+  </svg>
+</div>

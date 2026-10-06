@@ -1,6 +1,6 @@
 # Phase 3 implementation plan — MatchDay browsing
 
-Prepared: 6 October 2026. Status: proposed implementation; no Phase 3 code changes made.
+Prepared: 6 October 2026. Status: implemented and verified on 6 October 2026.
 
 Scope update: ticket tiers are deferred at the user's request. Implement the
 pages below with one price and seat pool per match/event. Bookings and waitlists
@@ -141,4 +141,4 @@ Phase 3 is complete when a person can browse/filter matches, inspect details, vi
 
 Booking/free RSVP submission, cancellation/refund mutations, joining waitlists, irreversible-action risk attributes, browser agent tools, Gemini graph execution, approvals, and independent agent verification remain in their owning later phases.
 
-This document is the deliverable for the current request. Implementation begins only after the user directs work to proceed.
+Implementation was authorized and completed. All 29 tests and fixture/live read-only browser checks passed. The revised Phase 2 seed was applied with user authorization. See `phases.md` and `backend/README.md` for the verification record.

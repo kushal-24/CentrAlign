@@ -1,0 +1,11 @@
+<article class="match-card">
+  <div class="card-visual"><%- include('sport-art', { sport: match.sport }) %><span class="sport-tag"><%= match.sport %></span><span class="status-badge badge-<%= match.status %>"><%= match.status %></span></div>
+  <div class="card-body">
+    <p class="eyebrow"><%= match.competition %></p>
+    <h3><a href="/matches/<%= match._id %>"><%= match.title %></a></h3>
+    <p class="card-location"><%= match.city %>, <%= match.country %></p>
+    <p class="card-time"><%= match.displayTime %></p>
+    <% if (match.bookingStatus === 'postponed') { %><p class="notice-inline">Postponed · Bookings on hold</p><% } else if (match.remaining === 0) { %><p class="notice-inline">Sold out</p><% } %>
+    <div class="card-bottom"><span class="price"><%= match.isFree ? 'Free entry' : formatMoney(match.price) %><small><%= match.isFree ? 'Fan-arena screening' : 'per ticket' %></small></span><a class="round-link" href="/matches/<%= match._id %>" aria-label="View <%= match.title %>">↗</a></div>
+  </div>
+</article>

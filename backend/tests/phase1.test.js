@@ -58,11 +58,14 @@ async function withServer(app, check) {
     }
 }
 
-test("site renders EJS and health reports disconnected Mongo accurately", async () => {
+test("site redirects to browsing and health reports disconnected Mongo accurately", async () => {
     await withServer(siteApp, async (url) => {
-        const page = await fetch(url);
-        assert.equal(page.status, 200);
-        assert.match(await page.text(), /<h1>MatchDay<\/h1>/);
+        const page = await fetch(url, { redirect: "manual" });
+        assert.equal(page.status, 302);
+        assert.equal(page.headers.get("location"), "/matches");
+        const unavailable = await fetch(`${url}/matches`);
+        assert.equal(unavailable.status, 503);
+        assert.match(await unavailable.text(), /role="alert"/);
         const health = await fetch(`${url}/health`);
         assert.equal(health.status, 503);
         assert.equal((await health.json()).data.database, "disconnected");

@@ -1,0 +1,414 @@
+.site-header {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    min-height: 88px;
+}
+.brand {
+    font-size: 25px;
+    font-weight: 800;
+    letter-spacing: -1.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+.brand-mark {
+    position: relative;
+    background: var(--ink);
+    color: var(--mint);
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    font-size: 27px;
+    line-height: 1;
+}
+.brand-mark span {
+    position: absolute;
+    right: 2px;
+    top: 1px;
+    font-size: 14px;
+}
+.brand-dot {
+    color: #649c56;
+    margin-left: -8px;
+}
+.site-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+.site-nav a {
+    padding: 8px 17px;
+    border-radius: 50px;
+    color: #667269;
+    font-size: 13px;
+    font-weight: 600;
+    transition:
+        background 0.18s,
+        color 0.18s;
+}
+.site-nav a:hover {
+    background: #e2eadf;
+}
+.site-nav a[aria-current] {
+    background: var(--ink);
+    color: #eff6e9;
+}
+.header-note {
+    font-size: 11px;
+    color: var(--muted);
+    border-left: 1px solid #d3ddd0;
+    padding-left: 28px;
+}
+.clock-strip {
+    border-block: 1px solid #d9e2d4;
+    background: rgba(247, 249, 241, 0.45);
+}
+.clock-inner {
+    display: flex;
+    justify-content: space-between;
+    padding-block: 10px;
+    font-size: 11px;
+    color: #63756a;
+    gap: 15px;
+}
+.clock-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+.clock-label time {
+    font-weight: 650;
+    color: #365647;
+}
+.clock-note {
+    color: #748174;
+}
+.button {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    min-height: 47px;
+    padding: 12px 22px;
+    border: 0;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    transition:
+        background 0.2s,
+        transform 0.2s,
+        box-shadow 0.2s;
+}
+.button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px #102b2a1a;
+}
+.button-dark {
+    background: var(--ink);
+    color: #f3f7ee;
+}
+.button-dark:hover {
+    background: #2c4944;
+}
+.button-mint {
+    background: var(--mint);
+    color: #203825;
+}
+.button-mint:hover {
+    background: #dafaac;
+}
+.panel {
+    padding: 32px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.57);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+.section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 23px;
+}
+.section-heading h2,
+.section-heading p {
+    margin-bottom: 0;
+}
+.section-heading .eyebrow {
+    margin-bottom: 9px;
+}
+.section-heading > .muted {
+    font-size: 12px;
+}
+.status-badge,
+.sport-tag {
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    line-height: 1.3;
+}
+.badge-live {
+    background: #f4f9e9;
+    color: #294c39;
+}
+.badge-live::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #598358;
+}
+.badge-upcoming,
+.badge-booked {
+    background: #e9f0df;
+    color: #406446;
+}
+.badge-past,
+.badge-cancelled {
+    background: #ecebe9;
+    color: #6f6d6c;
+}
+.badge-postponed {
+    background: #f9dfc5;
+    color: #80522c;
+}
+.badge-free {
+    background: #dbefc2;
+    color: #395c30;
+}
+.badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+.sport-tag {
+    background: rgba(255, 255, 255, 0.73);
+    color: #335044;
+    backdrop-filter: blur(8px);
+}
+.count-pill {
+    display: inline-grid;
+    place-items: center;
+    background: #e5ebdf;
+    color: #53664f;
+    min-width: 29px;
+    height: 29px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+}
+.empty-state {
+    padding: 54px 24px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.35);
+    border: 1px dashed #cad6c5;
+    border-radius: var(--radius);
+}
+.empty-state p {
+    color: var(--muted);
+    font-size: 14px;
+}
+.empty-state.compact {
+    padding: 32px;
+}
+.empty-state h3 {
+    margin-bottom: 10px;
+}
+.empty-symbol {
+    display: inline-grid;
+    place-items: center;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    background: #e3ebd8;
+    font-size: 24px;
+    margin-bottom: 18px;
+}
+.sport-art {
+    position: relative;
+    overflow: hidden;
+    background: #dbe8cf;
+    width: 100%;
+    height: 100%;
+    isolation: isolate;
+}
+.art-tennis {
+    background: linear-gradient(140deg, #dfecb8, #bdd2b3);
+}
+.art-football {
+    background: linear-gradient(140deg, #cde3ce, #95c7b6);
+}
+.art-cricket {
+    background: linear-gradient(140deg, #e8d9c2, #d6bf9e);
+}
+.art-badminton {
+    background: linear-gradient(140deg, #e2dcf3, #bebee1);
+}
+.sport-art svg {
+    position: relative;
+    z-index: 1;
+    stroke: rgba(255, 255, 255, 0.73);
+    fill: none;
+    stroke-width: 1.5;
+    transform: rotate(-12deg) scale(0.96);
+}
+.sport-art .art-ball {
+    fill: #ecf69c;
+    stroke: #f5fcc6;
+    stroke-width: 2;
+    filter: drop-shadow(6px 8px 4px #17332326);
+}
+.art-cricket .art-ball {
+    fill: #ae5c4b;
+    stroke: #ce8470;
+}
+.art-football .art-ball {
+    fill: #f6f3e9;
+    stroke: #cbd7c1;
+}
+.art-shuttle {
+    fill: #f3f2fa;
+    stroke: #fff;
+}
+.sport-art .ball-seam {
+    stroke: #fbfcd9;
+    stroke-width: 1.7;
+}
+.art-orbit {
+    position: absolute;
+    width: 210px;
+    height: 210px;
+    border: 1px solid #ffffff40;
+    border-radius: 50%;
+    right: -65px;
+    bottom: -80px;
+}
+.orbit-two {
+    width: 250px;
+    height: 250px;
+    right: -85px;
+    bottom: -100px;
+}
+.facts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px 32px;
+}
+.policy-copy {
+    font-size: 15px;
+    line-height: 1.85;
+    margin-bottom: 0;
+}
+.availability-note {
+    color: #718074;
+    font-size: 12px;
+    line-height: 1.7;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    margin: 22px 0 0;
+}
+.site-footer {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    border-top: 1px solid #d6dfcf;
+    padding-block: 35px;
+    margin-top: 76px;
+}
+.footer-brand {
+    font-size: 21px;
+}
+.site-footer p {
+    font-size: 12px;
+    color: #536956;
+    margin: 0;
+}
+.site-footer > span {
+    margin-left: auto;
+    font-size: 10px;
+    color: #7b867a;
+}
+.menu-toggle {
+    display: none;
+    background: transparent;
+    border: 1px solid #cdd8c8;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+@media (max-width: 760px) {
+    .site-header {
+        min-height: 75px;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding-block: 18px;
+        position: relative;
+    }
+    .brand {
+        font-size: 24px;
+    }
+    .header-note,
+    .clock-note {
+        display: none;
+    }
+    .site-nav {
+        gap: 3px;
+        width: 100%;
+        margin-left: 0;
+        justify-content: center;
+    }
+    .site-nav a {
+        padding: 9px 14px;
+    }
+    .has-navigation-js .menu-toggle {
+        display: block;
+        margin-left: auto;
+    }
+    .has-navigation-js .site-nav {
+        display: none;
+    }
+    .has-navigation-js .site-nav.is-open {
+        display: flex;
+        padding-top: 12px;
+    }
+    .clock-inner {
+        font-size: 10px;
+    }
+    .panel {
+        padding: 24px;
+    }
+    .section-heading {
+        align-items: flex-start;
+    }
+    .section-heading > .muted {
+        display: none;
+    }
+    .facts-grid {
+        gap: 23px;
+        grid-template-columns: 1fr;
+    }
+    .site-footer {
+        flex-wrap: wrap;
+        gap: 12px 20px;
+        margin-top: 48px;
+        padding-block: 25px;
+    }
+    .site-footer > span {
+        width: 100%;
+        margin-left: 0;
+    }
+}

@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<section class="discovery-hero">
+  <div class="hero-copy"><p class="eyebrow light"><span class="tiny-dot"></span> YOUR NEXT GREAT MATCHDAY</p><h1>Some moments<br>are better <em>live.</em></h1><p>From the first serve to the final whistle.<br>Find your game. Be part of the crowd.</p><a class="button button-mint" href="#explore">Explore matches <span aria-hidden="true">↗</span></a></div>
+  <div class="hero-graphic" aria-hidden="true"><span class="hero-ring ring-one"></span><span class="hero-ring ring-two"></span><span class="hero-ring ring-three"></span><span class="hero-ball"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45"/><path d="M24 12q55 40 51 75M9 48q50-22 77-13"/></svg></span><span class="hero-caption">THE CROWD. THE ENERGY.<br>THE MOMENT.</span><span class="hero-coordinate">CRICKET / TENNIS / BADMINTON / FOOTBALL</span></div>
+</section>
+<section id="explore" class="explore-section" aria-labelledby="explore-title">
+  <div class="section-heading"><div><p class="eyebrow">FIND YOUR SEAT</p><h2 id="explore-title">The game starts here<span class="accent">.</span></h2></div><p class="muted">Four sports. Endless reasons to show up.</p></div>
+  <form class="filter-panel" action="/matches" method="get">
+    <% if (filters.status) { %><input type="hidden" name="status" value="<%= filters.status %>"><% } %>
+    <div class="field search-field"><label for="q">Search matches</label><input id="q" name="q" type="search" placeholder="Team, match or competition" value="<%= filters.q %>" maxlength="160"></div>
+    <div class="field"><label for="sport">Sport</label><select id="sport" name="sport"><option value="">All sports</option><% sports.forEach(sport => { %><option value="<%= sport %>" <%= filters.sport === sport ? 'selected' : '' %>><%= sport.charAt(0).toUpperCase() + sport.slice(1) %></option><% }) %></select></div>
+    <div class="field"><label for="location">Location</label><input id="location" name="location" placeholder="City, country or venue" value="<%= filters.location %>" maxlength="160"></div>
+    <button class="button button-dark" type="submit">Find matches <span aria-hidden="true">↗</span></button>
+  </form>
+  <div class="results-bar"><nav class="status-tabs" aria-label="Match status"><% ['', 'live', 'upcoming', 'past'].forEach(status => { %><a href="<%= statusUrl(status) %>#explore" <%- filters.status === status ? 'aria-current="page"' : '' %>><%= status ? status.charAt(0).toUpperCase() + status.slice(1) : 'All matches' %></a><% }) %></nav><p class="muted"><%= total %> <%= total === 1 ? 'match' : 'matches' %> found</p></div>
+  <% if (filters.sport || filters.location || filters.q || filters.status) { %><div class="active-filters"><span>Showing <%= [filters.sport, filters.location, filters.q, filters.status].filter(Boolean).join(' · ') %></span><a href="/matches">Reset filters ×</a></div><% } %>
+  <% if (!total) { %><div class="empty-state" role="alert"><span class="empty-symbol" aria-hidden="true">↗</span><h3>No matches found</h3><p>Try another location, sport or search term.</p><a class="button button-dark" href="/matches">View all matches</a></div><% } %>
+  <% groups.forEach(group => { if (!group.matches.length) return; %>
+  <section class="match-group" aria-labelledby="group-<%= group.status %>"><div class="group-heading"><h3 id="group-<%= group.status %>"><%= group.status === 'live' ? 'Live right now' : group.status === 'upcoming' ? 'Coming up next' : 'From the archives' %></h3><span class="count-pill"><%= group.matches.length %></span></div><div class="match-grid"><% group.matches.forEach(match => { %><%- include('../partials/match-card', { match }) %><% }) %></div></section>
+  <% }) %>
+</section>
+<section class="closing-note"><span class="eyebrow">MORE THAN A TICKET</span><h2>A little less scrolling.<br>A little more <em>being there.</em></h2><span class="closing-star" aria-hidden="true">✳</span></section>
+<%- include('../partials/footer') %>

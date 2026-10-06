@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102b2a">
+  <title><%= title %> · MatchDay</title>
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <script src="/js/navigation.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header shell">
+    <a class="brand" href="/matches" aria-label="MatchDay home"><span class="brand-mark" aria-hidden="true">m<span>•</span></span>matchday<span class="brand-dot">.</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" hidden>Menu <span aria-hidden="true">☰</span></button>
+    <nav id="site-nav" class="site-nav" aria-label="Main navigation">
+      <a href="/matches" <%- currentPath.startsWith('/matches') ? 'aria-current="page"' : '' %>>Discover</a>
+      <a href="/bookings" <%- currentPath.startsWith('/bookings') ? 'aria-current="page"' : '' %>>My bookings</a>
+      <a href="/inbox" <%- currentPath === '/inbox' ? 'aria-current="page"' : '' %>>Inbox</a>
+    </nav>
+    <span class="header-note">For the love of the game.</span>
+  </header>
+  <div class="clock-strip">
+    <div class="shell clock-inner"><span class="clock-label"><span class="tiny-dot" aria-hidden="true"></span> Site time: <% if (now) { %><time id="site-time" datetime="<%= now.toISOString() %>"><%= formatTime(now) %></time><% } else { %><span id="site-time">Unavailable</span><% } %></span><span class="clock-note">A world of sport. One place to be.</span></div>
+  </div>
+  <main id="main" class="shell" tabindex="-1">
