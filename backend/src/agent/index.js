@@ -11,7 +11,12 @@ app.use(express.json({ limit: "16kb" }));
 app.get("/health", (req, res) => {
     const connected = mongoose.connection.readyState === 1;
     const status = connected ? 200 : 503;
-    res.status(status).json(new apiResponse({ service: "MatchPilot", phase: 1, database: connected ? "connected" : "disconnected" }, status));
+    res.status(status).json(
+        new apiResponse(
+            { service: "MatchPilot", phase: 1, database: connected ? "connected" : "disconnected" },
+            status,
+        ),
+    );
 });
 
 export function startAgent() {

@@ -6,7 +6,15 @@ import mongoose from "mongoose";
 import { chromium } from "playwright";
 import { tool } from "@langchain/core/tools";
 import { ToolMessage } from "@langchain/core/messages";
-import { Annotation, Command, END, MemorySaver, START, StateGraph, interrupt } from "@langchain/langgraph";
+import {
+    Annotation,
+    Command,
+    END,
+    MemorySaver,
+    START,
+    StateGraph,
+    interrupt,
+} from "@langchain/langgraph";
 import { z } from "zod";
 import { ConfigurationError, readConfig } from "../src/config.js";
 import connectDB from "../src/db/index.js";
@@ -27,7 +35,9 @@ export async function mongoSmoke() {
 export async function graphSmoke() {
     const State = Annotation.Root({ answer: Annotation() });
     const graph = new StateGraph(State)
-        .addNode("question", () => ({ answer: interrupt({ type: "question", question: "Phase 1 smoke?" }) }))
+        .addNode("question", () => ({
+            answer: interrupt({ type: "question", question: "Phase 1 smoke?" }),
+        }))
         .addEdge(START, "question")
         .addEdge("question", END)
         .compile({ checkpointer: new MemorySaver() });
@@ -81,9 +91,10 @@ export async function geminiSmoke() {
     assert.ok(call.id);
     const result = await hello.invoke(call.args);
     assert.equal(result, "Hello, MatchPilot!");
-    const final = await createLLM().invoke([
-        input, response, new ToolMessage({ content: result, tool_call_id: call.id }),
-    ], { signal: AbortSignal.timeout(30000) });
+    const final = await createLLM().invoke(
+        [input, response, new ToolMessage({ content: result, tool_call_id: call.id })],
+        { signal: AbortSignal.timeout(30000) },
+    );
     assert.ok(final.content.length > 0);
 }
 
@@ -100,7 +111,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
             await checks[name]();
             process.stdout.write(`PASS ${name}\n`);
         } catch (error) {
-            const detail = error instanceof ConfigurationError ? error.message : "check runtime access; provider errors are withheld to protect credentials";
+            const detail =
+                error instanceof ConfigurationError
+                    ? error.message
+                    : "check runtime access; provider errors are withheld to protect credentials";
             process.stderr.write(`FAIL ${name}: ${detail}\n`);
             process.exitCode = 1;
         }

@@ -16,7 +16,9 @@ export async function startServer(app, port, name) {
     };
     for (const signal of ["SIGINT", "SIGTERM"]) {
         process.once(signal, () => {
-            shutdown().catch(() => { process.exitCode = 1; });
+            shutdown().catch(() => {
+                process.exitCode = 1;
+            });
         });
     }
     return server;
@@ -26,7 +28,9 @@ export async function runServer(start) {
     try {
         await start();
     } catch {
-        process.stderr.write("Server startup failed. Check configuration, MongoDB access, and port availability.\n");
+        process.stderr.write(
+            "Server startup failed. Check configuration, MongoDB access, and port availability.\n",
+        );
         await mongoose.disconnect();
         process.exitCode = 1;
     }

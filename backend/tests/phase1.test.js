@@ -25,14 +25,23 @@ test("configuration rejects malformed values without revealing them", () => {
         { ...base, SITE_URL: "ftp://localhost" },
         { ...base, SITE_PORT: "5000" },
     ]) {
-        assert.throws(() => readConfig(input), (error) => !error.message.includes("secret-value"));
+        assert.throws(
+            () => readConfig(input),
+            (error) => !error.message.includes("secret-value"),
+        );
     }
 });
 
 test("full configuration requires Gemini and the seeded user email", () => {
     assert.throws(() => readConfig(base, { requireGemini: true }), /GEMINI_API_KEY/);
     assert.throws(() => readConfig(base, { requireStudent: true }), /STUDENT_EMAIL/);
-    assert.equal(readConfig({ ...base, GEMINI_API_KEY: "test-key", STUDENT_EMAIL: "student@example.com" }, { requireGemini: true, requireStudent: true }).STUDENT_EMAIL, "student@example.com");
+    assert.equal(
+        readConfig(
+            { ...base, GEMINI_API_KEY: "test-key", STUDENT_EMAIL: "student@example.com" },
+            { requireGemini: true, requireStudent: true },
+        ).STUDENT_EMAIL,
+        "student@example.com",
+    );
 });
 
 async function withServer(app, check) {
