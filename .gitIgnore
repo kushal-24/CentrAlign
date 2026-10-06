@@ -119,7 +119,15 @@ dist
 
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Node
 
-# documents
+# Phase 1 environment and generated artifacts
+.env.*
+!.env.example
+evidence/
+playwright-report/
+test-results/
+.DS_Store
+
+#documents
 phases.md
 MatchPilot_plan_v2.md
-Rules.MD
+Rules.md
