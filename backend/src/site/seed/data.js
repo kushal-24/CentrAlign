@@ -7,18 +7,21 @@ const day = 24 * hour;
 export const seedId = (prefix, number) =>
     new mongoose.Types.ObjectId(`${prefix}${number.toString(16).padStart(22, "0")}`);
 const at = (offset) => new Date(seedTime + offset);
-const general = (capacity = 40, sold = 0, price = 500) => ({
-    name: "General",
-    price,
-    capacity,
-    sold,
-});
-const premium = (capacity = 10, sold = 0, price = 1500) => ({
-    name: "Premium",
-    price,
-    capacity,
-    sold,
-});
+// Bonus features to be looked on later: ticket tiers.
+// const general = (capacity = 40, sold = 0, price = 500) => ({
+//     name: "General",
+//     price,
+//     capacity,
+//     sold,
+// });
+// const premium = (capacity = 10, sold = 0, price = 1500) => ({
+//     name: "Premium",
+//     price,
+//     capacity,
+//     sold,
+// });
+//
+const tickets = (capacity = 40, sold = 0, price = 500) => ({ capacity, sold, price });
 
 export function buildSeedData(studentEmail) {
     const users = [
@@ -47,7 +50,9 @@ export function buildSeedData(studentEmail) {
             2 * hour,
             "Asia/Kolkata",
             "IST",
-            [general(), premium()],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general(), premium()],
+            tickets(),
         ],
         [
             "football",
@@ -61,7 +66,9 @@ export function buildSeedData(studentEmail) {
             1.5 * hour,
             "Europe/Lisbon",
             "WEST",
-            [general(), premium()],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general(), premium()],
+            tickets(),
         ],
         [
             "cricket",
@@ -75,7 +82,9 @@ export function buildSeedData(studentEmail) {
             2 * day + 8 * hour,
             "Asia/Kolkata",
             "IST",
-            [general(20, 18, 800), premium(10, 0, 2000)],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general(20, 18, 800), premium(10, 0, 2000)],
+            tickets(20, 18, 800),
         ],
         [
             "cricket",
@@ -89,7 +98,9 @@ export function buildSeedData(studentEmail) {
             3 * day + 8 * hour,
             "Asia/Kolkata",
             "IST",
-            [general(40, 0, 400), premium()],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general(40, 0, 400), premium()],
+            tickets(40, 0, 400),
         ],
         [
             "tennis",
@@ -103,7 +114,9 @@ export function buildSeedData(studentEmail) {
             day + 3 * hour,
             "Europe/London",
             "BST",
-            [general(10, 10, 700), premium(10, 2, 2000)],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general(10, 10, 700), premium(10, 2, 2000)],
+            tickets(20, 12, 700),
         ],
         [
             "tennis",
@@ -117,7 +130,9 @@ export function buildSeedData(studentEmail) {
             5 * day + 3 * hour,
             "Europe/Madrid",
             "CEST",
-            [general(30, 0, 6000), premium(10, 0, 12000)],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general(30, 0, 6000), premium(10, 0, 12000)],
+            tickets(30, 0, 6000),
         ],
         [
             "badminton",
@@ -131,7 +146,9 @@ export function buildSeedData(studentEmail) {
             2 * day + 2 * hour,
             "Asia/Kolkata",
             "IST",
-            [general(12, 12, 300), premium(5, 5, 900)],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general(12, 12, 300), premium(5, 5, 900)],
+            tickets(17, 17, 300),
         ],
         [
             "badminton",
@@ -145,7 +162,9 @@ export function buildSeedData(studentEmail) {
             4 * day + 2 * hour,
             "Asia/Jakarta",
             "WIB",
-            [general(30, 0, 250), premium()],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general(30, 0, 250), premium()],
+            tickets(30, 0, 250),
         ],
         [
             "football",
@@ -159,7 +178,9 @@ export function buildSeedData(studentEmail) {
             3 * day + 7 * hour,
             "Asia/Kolkata",
             "IST",
-            [general(50, 2, 500), premium()],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general(50, 2, 500), premium()],
+            tickets(50, 2, 500),
         ],
         // Tokyo uses a different wall time so its absolute interval overlaps Kolkata.
         [
@@ -174,7 +195,9 @@ export function buildSeedData(studentEmail) {
             3 * day + 6.5 * hour,
             "Asia/Tokyo",
             "JST",
-            [general(40, 0, 650), premium()],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general(40, 0, 650), premium()],
+            tickets(40, 0, 650),
         ],
         [
             "football",
@@ -188,7 +211,9 @@ export function buildSeedData(studentEmail) {
             6 * day + 3 * hour,
             "Asia/Kolkata",
             "IST",
-            [general(100, 0, 0)],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general(100, 0, 0)],
+            tickets(100, 0, 0),
         ],
         [
             "badminton",
@@ -202,7 +227,9 @@ export function buildSeedData(studentEmail) {
             2 * day + 2 * hour,
             "Asia/Kuala_Lumpur",
             "MYT",
-            [general(), premium()],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general(), premium()],
+            tickets(),
         ],
         [
             "tennis",
@@ -216,7 +243,9 @@ export function buildSeedData(studentEmail) {
             7 * hour,
             "Asia/Kolkata",
             "IST",
-            [general(20, 1, 700), premium()],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general(20, 1, 700), premium()],
+            tickets(20, 1, 700),
         ],
         [
             "cricket",
@@ -230,7 +259,9 @@ export function buildSeedData(studentEmail) {
             -day + 8 * hour,
             "Asia/Kolkata",
             "IST",
-            [general()],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general()],
+            tickets(),
         ],
         [
             "tennis",
@@ -244,7 +275,9 @@ export function buildSeedData(studentEmail) {
             -2 * day + 3 * hour,
             "Australia/Melbourne",
             "AEDT",
-            [general()],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general()],
+            tickets(),
         ],
         [
             "badminton",
@@ -258,7 +291,9 @@ export function buildSeedData(studentEmail) {
             -3 * day + 2 * hour,
             "Asia/Singapore",
             "SGT",
-            [general()],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general()],
+            tickets(),
         ],
         [
             "football",
@@ -272,7 +307,9 @@ export function buildSeedData(studentEmail) {
             -4 * day + 2 * hour,
             "Europe/London",
             "BST",
-            [general()],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general()],
+            tickets(),
         ],
         [
             "cricket",
@@ -286,7 +323,9 @@ export function buildSeedData(studentEmail) {
             -5 * day + 8 * hour,
             "Asia/Dubai",
             "GST (UTC+04:00)",
-            [general()],
+            // Bonus features to be looked on later: ticket tiers.
+            // [general()],
+            tickets(),
         ],
     ];
     const policies = [
@@ -318,7 +357,7 @@ export function buildSeedData(studentEmail) {
                 end,
                 zone,
                 label,
-                tiers,
+                inventory,
             ],
             index,
         ) => {
@@ -336,7 +375,7 @@ export function buildSeedData(studentEmail) {
                 startsAt,
                 endsAt: at(end),
                 displayTime,
-                tiers,
+                ...inventory,
                 perBookingLimit: index === 7 ? 2 : 4,
                 isFree: index === 10,
                 bookingStatus: index === 11 ? "postponed" : "open",
@@ -349,7 +388,7 @@ export function buildSeedData(studentEmail) {
     );
 
     const bookings = [];
-    const addBooking = (matchNumber, userNumber, tierName, quantity, createdAt = at(-day)) => {
+    const addBooking = (matchNumber, userNumber, quantity, createdAt = at(-day)) => {
         const match = matches[matchNumber - 1];
         const user = users[userNumber - 1];
         const index = bookings.length + 1;
@@ -360,29 +399,32 @@ export function buildSeedData(studentEmail) {
             userId: user._id,
             ownerName: user.name,
             ownerEmail: user.email,
-            tier: tierName,
+            // Bonus features to be looked on later: ticket tiers.
+            // tier: tierName,
             quantity,
-            totalPrice: match.tiers.find((tier) => tier.name === tierName).price * quantity,
+            // Bonus features to be looked on later: ticket tiers.
+            // totalPrice: match.tiers.find((tier) => tier.name === tierName).price * quantity,
+            totalPrice: match.price * quantity,
             status: "booked",
             refundAmount: 0,
             createdAt,
             cancelledAt: null,
         });
     };
-    addBooking(9, 1, "General", 2);
-    addBooking(13, 1, "General", 1, at(-hour));
-    [4, 4, 4, 4, 2].forEach((quantity, index) => addBooking(3, index + 2, "General", quantity));
-    [4, 4, 2].forEach((quantity, index) => addBooking(5, index + 2, "General", quantity));
-    addBooking(5, 5, "Premium", 2);
-    [4, 4, 4].forEach((quantity, index) => addBooking(7, index + 2, "General", quantity));
-    addBooking(7, 5, "Premium", 3);
-    addBooking(7, 6, "Premium", 2);
+    addBooking(9, 1, 2);
+    addBooking(13, 1, 1, at(-hour));
+    [4, 4, 4, 4, 2].forEach((quantity, index) => addBooking(3, index + 2, quantity));
+    [4, 4, 2].forEach((quantity, index) => addBooking(5, index + 2, quantity));
+    addBooking(5, 5, 2);
+    [4, 4, 4].forEach((quantity, index) => addBooking(7, index + 2, quantity));
+    addBooking(7, 5, 3);
+    addBooking(7, 6, 2);
 
     const outbox = bookings.map((booking, index) => ({
         _id: seedId("40", index + 1),
         to: booking.ownerEmail,
         subject: `Booking confirmed: ${booking.code}`,
-        body: `${booking.code}: ${booking.quantity} ${booking.tier} ticket(s) for ${matches.find((match) => match._id.equals(booking.matchId)).title}. Total INR ${booking.totalPrice}.`,
+        body: `${booking.code}: ${booking.quantity} ticket(s) for ${matches.find((match) => match._id.equals(booking.matchId)).title}. Total INR ${booking.totalPrice}.`,
         type: "booking_confirmation",
         relatedBookingId: booking._id,
         createdAt: booking.createdAt,

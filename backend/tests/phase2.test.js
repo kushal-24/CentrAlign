@@ -17,6 +17,41 @@ const truth = JSON.parse(
 );
 const now = parseInstant(SEED_NOW);
 
+test("events use one price and seat pool, with tiers deferred", () => {
+    assert.equal(models.Match.schema.path("tiers"), undefined);
+    assert.equal(models.Booking.schema.path("tier"), undefined);
+    assert.equal(models.Waitlist.schema.path("tier"), undefined);
+    for (const match of data.matches) {
+        assert.equal(Object.hasOwn(match, "tiers"), false);
+        assert.equal(match.isFree ? match.price === 0 : match.price > 0, true);
+    }
+    for (const booking of data.bookings) assert.equal(Object.hasOwn(booking, "tier"), false);
+    assert.equal(data.matches[2].capacity - data.matches[2].sold, 2);
+    assert.equal(data.matches[6].capacity - data.matches[6].sold, 0);
+    assert.equal(data.matches[10].price, 0);
+    assert.ok(data.outbox.every((message) => !/General|Premium/.test(message.body)));
+});
+
+test("waitlist identity and position are unique per event, without a tier", () => {
+    const entry = {
+        matchId: data.matches[6]._id,
+        userId: data.users[0]._id,
+        quantity: 1,
+        position: 1,
+        createdAt: now,
+    };
+    assert.equal(new models.Waitlist(entry).validateSync(), undefined);
+    assert.deepEqual(
+        models.Waitlist.schema
+            .indexes()
+            .map(([keys, options]) => ({ keys, unique: options.unique })),
+        [
+            { keys: { matchId: 1, userId: 1 }, unique: true },
+            { keys: { matchId: 1, position: 1 }, unique: true },
+        ],
+    );
+});
+
 test("database selection preserves the URI and explicitly selects the configured database", async (t) => {
     const original = process.env.MONGODB_URI;
     const uri = "mongodb://127.0.0.1:27017/?appName=phase2";
@@ -49,39 +84,32 @@ test("seed is deterministic, validates, and matches independent ground truth", a
         const bookingOpen =
             getMatchStatus(match, now) === "upcoming" && match.bookingStatus === "open";
         assert.equal(bookingOpen, expected.bookingOpen);
-        assert.equal(
-            bookingOpen && match.tiers.some((tier) => tier.sold < tier.capacity),
-            expected.bookable,
-        );
-        assert.deepEqual(
-            match.tiers.map((tier) => ({ ...tier, remaining: tier.capacity - tier.sold })),
-            expected.tiers,
-        );
+        assert.equal(bookingOpen && match.sold < match.capacity, expected.bookable);
+        assert.equal(match.price, expected.price);
+        assert.equal(match.capacity, expected.capacity);
+        assert.equal(match.sold, expected.sold);
+        assert.equal(match.capacity - match.sold, expected.remaining);
     }
 });
 
 test("all inventory sales have corresponding valid bookings and confirmations", () => {
     for (const match of data.matches) {
-        for (const tier of match.tiers) {
-            const bookings = data.bookings.filter(
-                (booking) => booking.matchId.equals(match._id) && booking.tier === tier.name,
-            );
-            assert.equal(
-                bookings.reduce((sum, booking) => sum + booking.quantity, 0),
-                tier.sold,
-            );
-        }
+        const bookings = data.bookings.filter(
+            (booking) => booking.matchId.equals(match._id) && booking.status === "booked",
+        );
+        assert.equal(
+            bookings.reduce((sum, booking) => sum + booking.quantity, 0),
+            match.sold,
+        );
     }
+
     const uniqueBookings = new Set();
     for (const booking of data.bookings) {
         const match = data.matches.find((record) => record._id.equals(booking.matchId));
         const user = data.users.find((record) => record._id.equals(booking.userId));
         assert.ok(user);
         assert.ok(booking.quantity <= match.perBookingLimit);
-        assert.equal(
-            booking.totalPrice,
-            booking.quantity * match.tiers.find((tier) => tier.name === booking.tier).price,
-        );
+        assert.equal(booking.totalPrice, booking.quantity * match.price);
         const key = `${booking.userId}:${booking.matchId}`;
         assert.ok(!uniqueBookings.has(key));
         uniqueBookings.add(key);
@@ -161,16 +189,15 @@ test("models reject invalid quantities, inventory, dates, free pricing, and cont
         [models.User, { ...data.users[0], email: "invalid" }],
         [models.User, { ...data.users[0], phone: "abc" }],
         [models.Match, { ...data.matches[0], endsAt: data.matches[0].startsAt }],
-        [
-            models.Match,
-            { ...data.matches[0], tiers: [{ name: "General", price: 10, capacity: 1, sold: 2 }] },
-        ],
+        [models.Match, { ...data.matches[0], capacity: 1, sold: 2 }],
         [models.Match, { ...data.matches[0], isFree: true }],
-        [models.Match, { ...data.matches[0], tiers: [] }],
-        [
-            models.Match,
-            { ...data.matches[0], tiers: [data.matches[0].tiers[0], data.matches[0].tiers[0]] },
-        ],
+        [models.Match, { ...data.matches[0], price: -1 }],
+        [models.Match, { ...data.matches[0], price: Infinity }],
+        [models.Match, { ...data.matches[0], price: undefined }],
+        [models.Match, { ...data.matches[0], capacity: 0 }],
+        [models.Match, { ...data.matches[0], capacity: 1.5 }],
+        [models.Match, { ...data.matches[0], sold: -1 }],
+        [models.Match, { ...data.matches[0], sold: 1.5 }],
         [models.Booking, { ...data.bookings[0], quantity: 1.5 }],
         [models.Booking, { ...data.bookings[0], refundAmount: 1 }],
         [models.Booking, { ...data.bookings[0], status: "cancelled", cancelledAt: null }],
@@ -180,7 +207,6 @@ test("models reject invalid quantities, inventory, dates, free pricing, and cont
             {
                 matchId: data.matches[6]._id,
                 userId: data.users[0]._id,
-                tier: "General",
                 quantity: 1,
                 position: 0,
                 createdAt: now,

@@ -32,12 +32,13 @@ const bookingSchema = new Schema({
         match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     },
 
-    tier: {
-        type: String,
-        required: true,
-        trim: true,
-    },
-
+    // Bonus features to be looked on later: ticket tiers.
+    // tier: {
+    //     type: String,
+    //     required: true,
+    //     trim: true,
+    // },
+    //
     quantity: {
         type: Number,
         required: true,

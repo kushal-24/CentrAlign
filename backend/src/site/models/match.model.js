@@ -1,51 +1,52 @@
 import mongoose, { Schema } from "mongoose";
 
-const tierSchema = new Schema(
-    {
-        name: {
-            type: String,
-            required: true,
-            trim: true,
-        },
-
-        price: {
-            type: Number,
-            required: true,
-            min: 0,
-            validate: Number.isFinite,
-        },
-
-        capacity: {
-            type: Number,
-            required: true,
-            min: 1,
-            validate: Number.isSafeInteger,
-        },
-
-        sold: {
-            type: Number,
-            required: true,
-            min: 0,
-
-            validate: [
-                {
-                    validator: Number.isSafeInteger,
-                    message: "Sold quantity must be an integer",
-                },
-                {
-                    validator: function (value) {
-                        return value <= this.capacity;
-                    },
-                    message: "Sold quantity exceeds capacity",
-                },
-            ],
-        },
-    },
-    {
-        _id: false,
-    }
-);
-
+// Bonus features to be looked on later: ticket tiers.
+// const tierSchema = new Schema(
+//     {
+//         name: {
+//             type: String,
+//             required: true,
+//             trim: true,
+//         },
+//
+//         price: {
+//             type: Number,
+//             required: true,
+//             min: 0,
+//             validate: Number.isFinite,
+//         },
+//
+//         capacity: {
+//             type: Number,
+//             required: true,
+//             min: 1,
+//             validate: Number.isSafeInteger,
+//         },
+//
+//         sold: {
+//             type: Number,
+//             required: true,
+//             min: 0,
+//
+//             validate: [
+//                 {
+//                     validator: Number.isSafeInteger,
+//                     message: "Sold quantity must be an integer",
+//                 },
+//                 {
+//                     validator: function (value) {
+//                         return value <= this.capacity;
+//                     },
+//                     message: "Sold quantity exceeds capacity",
+//                 },
+//             ],
+//         },
+//     },
+//     {
+//         _id: false,
+//     }
+// );
+//
 const matchSchema = new Schema({
     sport: {
         type: String,
@@ -118,22 +119,52 @@ const matchSchema = new Schema({
         trim: true,
     },
 
-    tiers: {
-        type: [tierSchema],
+    // Bonus features to be looked on later: ticket tiers.
+    // tiers: {
+    //     type: [tierSchema],
+    //     required: true,
+    //
+    //     validate: {
+    //         validator: function (tiers) {
+    //             const names = tiers.map((tier) => tier.name);
+    //
+    //             return (
+    //                 tiers.length > 0 &&
+    //                 new Set(names).size === names.length
+    //             );
+    //         },
+    //
+    //         message: "Ticket tiers must be nonempty and uniquely named",
+    //     },
+    // },
+    //
+    price: {
+        type: Number,
         required: true,
+        min: 0,
+        validate: Number.isFinite,
+    },
 
-        validate: {
-            validator: function (tiers) {
-                const names = tiers.map((tier) => tier.name);
+    capacity: {
+        type: Number,
+        required: true,
+        min: 1,
+        validate: Number.isSafeInteger,
+    },
 
-                return (
-                    tiers.length > 0 &&
-                    new Set(names).size === names.length
-                );
+    sold: {
+        type: Number,
+        required: true,
+        min: 0,
+        validate: [
+            { validator: Number.isSafeInteger, message: "Sold quantity must be an integer" },
+            {
+                validator: function (value) {
+                    return value <= this.capacity;
+                },
+                message: "Sold quantity exceeds capacity",
             },
-
-            message: "Ticket tiers must be nonempty and uniquely named",
-        },
+        ],
     },
 
     perBookingLimit: {
@@ -151,12 +182,10 @@ const matchSchema = new Schema({
             validator: function (value) {
                 if (!value) return true;
 
-                return this.tiers.every(
-                    (tier) => tier.price === 0
-                );
+                return this.price === 0;
             },
 
-            message: "Free event tiers must cost zero",
+            message: "Free events must cost zero",
         },
     },
 

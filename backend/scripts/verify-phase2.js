@@ -95,22 +95,16 @@ try {
         assert.equal(match.isFree, expected.isFree);
         assert.equal(match.perBookingLimit, expected.perBookingLimit);
         assert.equal(match.refundFullHoursBefore, expected.refundFullHoursBefore);
-        assert.deepEqual(
-            match.tiers.map((tier) => ({ ...tier, remaining: tier.capacity - tier.sold })),
-            expected.tiers,
-        );
-        for (const tier of match.tiers) {
-            const sold = bookings
-                .filter(
-                    (booking) =>
-                        booking.status === "booked" &&
-                        booking.matchId.equals(match._id) &&
-                        booking.tier === tier.name,
-                )
-                .reduce((sum, booking) => sum + booking.quantity, 0);
-            assert.equal(tier.sold, sold);
-        }
+        assert.equal(match.price, expected.price);
+        assert.equal(match.capacity, expected.capacity);
+        assert.equal(match.sold, expected.sold);
+        assert.equal(match.capacity - match.sold, expected.remaining);
+        const sold = bookings
+            .filter((booking) => booking.status === "booked" && booking.matchId.equals(match._id))
+            .reduce((sum, booking) => sum + booking.quantity, 0);
+        assert.equal(match.sold, sold);
     }
+
     for (const expected of truth.mainBookings) {
         const booking = bookings.find((record) => record._id.toString() === expected.id);
         const match = matches.find((record) => record._id.equals(booking.matchId));
@@ -121,6 +115,8 @@ try {
         assert.equal(getRefundAmount(match, booking, now), expected.refundAtSeedNow);
     }
     for (const booking of bookings) {
+        const match = matches.find((record) => record._id.equals(booking.matchId));
+        assert.equal(booking.totalPrice, booking.quantity * match.price);
         const confirmations = outbox.filter(
             (message) =>
                 message.relatedBookingId?.equals(booking._id) &&

@@ -22,22 +22,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 40,
-          "sold": 0,
-          "remaining": 40,
-          "price": 500
-        },
-        {
-          "name": "Premium",
-          "capacity": 10,
-          "sold": 0,
-          "remaining": 10,
-          "price": 1500
-        }
-      ]
+      "capacity": 40,
+      "sold": 0,
+      "remaining": 40,
+      "price": 500
     },
     {
       "label": "M2",
@@ -51,22 +39,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 40,
-          "sold": 0,
-          "remaining": 40,
-          "price": 500
-        },
-        {
-          "name": "Premium",
-          "capacity": 10,
-          "sold": 0,
-          "remaining": 10,
-          "price": 1500
-        }
-      ]
+      "capacity": 40,
+      "sold": 0,
+      "remaining": 40,
+      "price": 500
     },
     {
       "label": "M3",
@@ -80,22 +56,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 20,
-          "sold": 18,
-          "remaining": 2,
-          "price": 800
-        },
-        {
-          "name": "Premium",
-          "capacity": 10,
-          "sold": 0,
-          "remaining": 10,
-          "price": 2000
-        }
-      ]
+      "capacity": 20,
+      "sold": 18,
+      "remaining": 2,
+      "price": 800
     },
     {
       "label": "M4",
@@ -109,22 +73,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 40,
-          "sold": 0,
-          "remaining": 40,
-          "price": 400
-        },
-        {
-          "name": "Premium",
-          "capacity": 10,
-          "sold": 0,
-          "remaining": 10,
-          "price": 1500
-        }
-      ]
+      "capacity": 40,
+      "sold": 0,
+      "remaining": 40,
+      "price": 400
     },
     {
       "label": "M5",
@@ -138,22 +90,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 10,
-          "sold": 10,
-          "remaining": 0,
-          "price": 700
-        },
-        {
-          "name": "Premium",
-          "capacity": 10,
-          "sold": 2,
-          "remaining": 8,
-          "price": 2000
-        }
-      ]
+      "capacity": 20,
+      "sold": 12,
+      "remaining": 8,
+      "price": 700
     },
     {
       "label": "M6",
@@ -167,22 +107,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": null,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 30,
-          "sold": 0,
-          "remaining": 30,
-          "price": 6000
-        },
-        {
-          "name": "Premium",
-          "capacity": 10,
-          "sold": 0,
-          "remaining": 10,
-          "price": 12000
-        }
-      ]
+      "capacity": 30,
+      "sold": 0,
+      "remaining": 30,
+      "price": 6000
     },
     {
       "label": "M7",
@@ -196,22 +124,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 48,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 12,
-          "sold": 12,
-          "remaining": 0,
-          "price": 300
-        },
-        {
-          "name": "Premium",
-          "capacity": 5,
-          "sold": 5,
-          "remaining": 0,
-          "price": 900
-        }
-      ]
+      "capacity": 17,
+      "sold": 17,
+      "remaining": 0,
+      "price": 300
     },
     {
       "label": "M8",
@@ -225,22 +141,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 30,
-          "sold": 0,
-          "remaining": 30,
-          "price": 250
-        },
-        {
-          "name": "Premium",
-          "capacity": 10,
-          "sold": 0,
-          "remaining": 10,
-          "price": 1500
-        }
-      ]
+      "capacity": 30,
+      "sold": 0,
+      "remaining": 30,
+      "price": 250
     },
     {
       "label": "M9",
@@ -254,22 +158,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 50,
-          "sold": 2,
-          "remaining": 48,
-          "price": 500
-        },
-        {
-          "name": "Premium",
-          "capacity": 10,
-          "sold": 0,
-          "remaining": 10,
-          "price": 1500
-        }
-      ]
+      "capacity": 50,
+      "sold": 2,
+      "remaining": 48,
+      "price": 500
     },
     {
       "label": "M10",
@@ -283,22 +175,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 40,
-          "sold": 0,
-          "remaining": 40,
-          "price": 650
-        },
-        {
-          "name": "Premium",
-          "capacity": 10,
-          "sold": 0,
-          "remaining": 10,
-          "price": 1500
-        }
-      ]
+      "capacity": 40,
+      "sold": 0,
+      "remaining": 40,
+      "price": 650
     },
     {
       "label": "M11",
@@ -312,15 +192,10 @@
       "isFree": true,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 100,
-          "sold": 0,
-          "remaining": 100,
-          "price": 0
-        }
-      ]
+      "capacity": 100,
+      "sold": 0,
+      "remaining": 100,
+      "price": 0
     },
     {
       "label": "M12",
@@ -334,22 +209,10 @@
       "isFree": false,
       "bookingStatus": "postponed",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 40,
-          "sold": 0,
-          "remaining": 40,
-          "price": 500
-        },
-        {
-          "name": "Premium",
-          "capacity": 10,
-          "sold": 0,
-          "remaining": 10,
-          "price": 1500
-        }
-      ]
+      "capacity": 40,
+      "sold": 0,
+      "remaining": 40,
+      "price": 500
     },
     {
       "label": "M13",
@@ -363,22 +226,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 20,
-          "sold": 1,
-          "remaining": 19,
-          "price": 700
-        },
-        {
-          "name": "Premium",
-          "capacity": 10,
-          "sold": 0,
-          "remaining": 10,
-          "price": 1500
-        }
-      ]
+      "capacity": 20,
+      "sold": 1,
+      "remaining": 19,
+      "price": 700
     },
     {
       "label": "M14",
@@ -392,15 +243,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 40,
-          "sold": 0,
-          "remaining": 40,
-          "price": 500
-        }
-      ]
+      "capacity": 40,
+      "sold": 0,
+      "remaining": 40,
+      "price": 500
     },
     {
       "label": "M15",
@@ -414,15 +260,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 40,
-          "sold": 0,
-          "remaining": 40,
-          "price": 500
-        }
-      ]
+      "capacity": 40,
+      "sold": 0,
+      "remaining": 40,
+      "price": 500
     },
     {
       "label": "M16",
@@ -436,15 +277,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 40,
-          "sold": 0,
-          "remaining": 40,
-          "price": 500
-        }
-      ]
+      "capacity": 40,
+      "sold": 0,
+      "remaining": 40,
+      "price": 500
     },
     {
       "label": "M17",
@@ -458,15 +294,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 40,
-          "sold": 0,
-          "remaining": 40,
-          "price": 500
-        }
-      ]
+      "capacity": 40,
+      "sold": 0,
+      "remaining": 40,
+      "price": 500
     },
     {
       "label": "M18",
@@ -480,15 +311,10 @@
       "isFree": false,
       "bookingStatus": "open",
       "refundFullHoursBefore": 24,
-      "tiers": [
-        {
-          "name": "General",
-          "capacity": 40,
-          "sold": 0,
-          "remaining": 40,
-          "price": 500
-        }
-      ]
+      "capacity": 40,
+      "sold": 0,
+      "remaining": 40,
+      "price": 500
     }
   ],
   "mainBookings": [
@@ -498,7 +324,6 @@
       "code": "MD-1001",
       "matchId": "200000000000000000000009",
       "userId": "100000000000000000000001",
-      "tier": "General",
       "quantity": 2,
       "totalPrice": 1000,
       "status": "booked",
@@ -511,7 +336,6 @@
       "code": "MD-1002",
       "matchId": "20000000000000000000000d",
       "userId": "100000000000000000000001",
-      "tier": "General",
       "quantity": 1,
       "totalPrice": 700,
       "status": "booked",
@@ -530,6 +354,7 @@
     "Bookability assumes valid attendee details, quantity within limits, and no existing active booking for that user.",
     "bookingOpen describes time and postponement eligibility; bookable additionally requires available tickets.",
     "All sold inventory is represented by the 16 seeded active bookings.",
-    "Tokyo and Kolkata have different venue wall times but overlapping absolute intervals."
+    "Tokyo and Kolkata have different venue wall times but overlapping absolute intervals.",
+    "Ticket tiers are deferred; each event has one price and one seat pool. M3 keeps two seats remaining, M5 pools 20 seats with 12 sold, and M7 pools 17 sold-out seats."
   ]
 }
