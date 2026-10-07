@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import express from "express";
 import { createSessionManager } from "../src/agent/tools/sessions.js";
 import { createBrowserTools } from "../src/agent/tools/browser.js";
-import { createApprovalHarness } from "./helpers/phase5-harness.js";
+import { createApprovalDriver } from "./helpers/production-approval.js";
 
 const html = `<!doctype html><title>Browser fixture</title><time id="site-time">10 Oct 2026, 2 pm IST</time><main><div role="alert">Check details</div><label>Name<input id="name" name="name" value="Demo"></label><input aria-label="Secret" type="password" value="dont-expose"><input aria-label="Hidden" hidden><button disabled>Disabled</button><input aria-label="Read only" readonly value="fixed"><select aria-label="Sport"><option value="cricket">Cricket</option><option value="tennis">Tennis</option><option disabled value="closed">Closed</option></select><label>Agree<input type="checkbox" name="confirm"></label><a href="/inbox">Inbox</a><a href="/admin/clock">Admin</a><a href="http://127.0.0.1:1/matches">External</a><a href="/matches?popup=1" target="_blank">Popup</a><a href="/matches?redirect=1">Redirect</a><button onclick="confirm('Unapproved?');">Dialog</button><form method="post" action="/profile"><label>Profile name<input name="name" value="Demo"></label><button data-risk="irreversible" onclick="return confirm('Save?')">Save profile</button></form><p>${"Visible content ".repeat(1000)}</p></main>`;
 
@@ -176,7 +176,7 @@ test("Phase 5 real Chromium tools, references, boundaries, sessions and approval
                 });
                 assert.match(result.observation, /dismissed/);
                 snapshot = result.snapshot;
-                const harness = createApprovalHarness(tools, session.taskId);
+                const harness = createApprovalDriver(tools, session.taskId);
                 let paused = await harness.start(element(snapshot, "Save profile"));
                 assert.equal(paused.__interrupt__[0].value.type, "approval");
                 assert.equal(writes, 0);
@@ -207,7 +207,7 @@ test("Phase 5 real Chromium tools, references, boundaries, sessions and approval
         );
         await t.test("changed form and cross-task approval cannot execute", async () => {
             snapshot = await call(tools, "browser_goto", { url: "/matches" });
-            const harness = createApprovalHarness(tools, session.taskId);
+            const harness = createApprovalDriver(tools, session.taskId);
             await harness.start(element(snapshot, "Save profile"));
             await session.page.locator("form input").fill("Changed while paused");
             const result = await harness.resume({
@@ -223,7 +223,7 @@ test("Phase 5 real Chromium tools, references, boundaries, sessions and approval
                 otherSnapshot.elements.find((entry) => entry.name === "Profile name").value,
                 "Demo",
             );
-            const otherHarness = createApprovalHarness(otherTools, "other-task");
+            const otherHarness = createApprovalDriver(otherTools, "other-task");
             await harness.start(element(snapshot, "Save profile"));
             await otherHarness.start(element(otherSnapshot, "Save profile"));
             await assert.rejects(
@@ -248,7 +248,7 @@ test("Phase 5 real Chromium tools, references, boundaries, sessions and approval
             "malformed, concurrent and detached-target resumes fail safely and recover",
             async () => {
                 snapshot = await call(tools, "browser_goto", { url: "/matches" });
-                const harness = createApprovalHarness(tools, session.taskId);
+                const harness = createApprovalDriver(tools, session.taskId);
                 await harness.start(element(snapshot, "Save profile"));
                 const malformed = await harness.resume({
                     proposalId: harness.proposal.proposalId,
@@ -292,7 +292,7 @@ test("Phase 5 real Chromium tools, references, boundaries, sessions and approval
             "approved click timeout clears dialog permission without retrying",
             async () => {
                 snapshot = await call(tools, "browser_goto", { url: "/matches" });
-                const harness = createApprovalHarness(tools, session.taskId);
+                const harness = createApprovalDriver(tools, session.taskId);
                 await harness.start(element(snapshot, "Save profile"));
                 // Test-only obstruction changes clickability, not the approved form details.
                 await session.page.evaluate(() => {

@@ -16,8 +16,8 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "start:site": "node src/site/server.js",
-    "start:agent": "node src/agent/index.js",
-    "dev:agent": "nodemon src/agent/index.js",
+    "start:agent": "PLAYWRIGHT_BROWSERS_PATH=0 node src/agent/index.js",
+    "dev:agent": "PLAYWRIGHT_BROWSERS_PATH=0 nodemon src/agent/index.js",
     "check:config": "node scripts/check-config.js",
     "seed": "node src/site/seed/seed.js",
     "verify:phase2": "node scripts/verify-phase2.js",
@@ -25,7 +25,6 @@
     "smoke:mongo": "node scripts/smoke.js mongo",
     "smoke:gemini": "node scripts/smoke.js gemini",
     "smoke:browser": "PLAYWRIGHT_BROWSERS_PATH=0 node scripts/smoke.js browser",
-    "smoke:graph": "node scripts/smoke.js graph",
     "evals": "node evals/run-evals.js",
     "install:chromium": "PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium"
   },
@@ -36,6 +35,7 @@
   "dependencies": {
     "@langchain/core": "^1.2.16",
     "@langchain/google-genai": "^2.3.2",
+    "@langchain/groq": "^1.3.1",
     "@langchain/langgraph": "^1.4.19",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

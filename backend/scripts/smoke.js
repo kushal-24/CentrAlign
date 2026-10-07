@@ -1,20 +1,10 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import mongoose from "mongoose";
 import { chromium } from "playwright";
 import { tool } from "@langchain/core/tools";
 import { ToolMessage } from "@langchain/core/messages";
-import {
-    Annotation,
-    Command,
-    END,
-    MemorySaver,
-    START,
-    StateGraph,
-    interrupt,
-} from "@langchain/langgraph";
 import { z } from "zod";
 import { ConfigurationError, readConfig } from "../src/config.js";
 import connectDB from "../src/db/index.js";
@@ -30,27 +20,6 @@ export async function mongoSmoke() {
     } finally {
         await mongoose.disconnect();
     }
-}
-
-export async function graphSmoke() {
-    const State = Annotation.Root({ answer: Annotation() });
-    const graph = new StateGraph(State)
-        .addNode("question", () => ({
-            answer: interrupt({ type: "question", question: "Phase 1 smoke?" }),
-        }))
-        .addEdge(START, "question")
-        .addEdge("question", END)
-        .compile({ checkpointer: new MemorySaver() });
-    const config = { configurable: { thread_id: `phase1-${randomUUID()}` } };
-    const paused = await graph.invoke({ answer: null }, config);
-    assert.equal(paused.__interrupt__.length, 1);
-    assert.equal(paused.__interrupt__[0].value.type, "question");
-    const resumed = await graph.invoke(new Command({ resume: "confirmed" }), config);
-    assert.equal(resumed.answer, "confirmed");
-    assert.ok(!resumed.__interrupt__?.length);
-    const checkpoint = await graph.getState(config);
-    assert.equal(checkpoint.values.answer, "confirmed");
-    assert.deepEqual(checkpoint.next, []);
 }
 
 export async function browserSmoke() {
@@ -98,7 +67,7 @@ export async function geminiSmoke() {
     assert.ok(final.content.length > 0);
 }
 
-const checks = { mongo: mongoSmoke, graph: graphSmoke, browser: browserSmoke, gemini: geminiSmoke };
+const checks = { mongo: mongoSmoke, browser: browserSmoke, gemini: geminiSmoke };
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     const names = process.argv[2] ? [process.argv[2]] : Object.keys(checks);
     for (const name of names) {

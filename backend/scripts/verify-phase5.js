@@ -4,7 +4,7 @@ import { readConfig } from "../src/config.js";
 import { app } from "../src/site/server.js";
 import { createSessionManager } from "../src/agent/tools/sessions.js";
 import { createBrowserTools } from "../src/agent/tools/browser.js";
-import { createApprovalHarness } from "../tests/helpers/phase5-harness.js";
+import { createApprovalDriver } from "../tests/helpers/production-approval.js";
 import { preparePhase5World, siteRecords } from "../tests/helpers/phase5-world.js";
 import { Booking, Match, Outbox, Waitlist, User } from "../src/site/models/index.js";
 
@@ -38,7 +38,7 @@ try {
     });
     const session = await manager.createSession("phase5-actions");
     const tools = createBrowserTools(manager, session.taskId);
-    const harness = createApprovalHarness(tools, session.taskId);
+    const harness = createApprovalDriver(tools, session.taskId);
 
     async function call(name, args = {}) {
         const result = await tools.runTool(name, args);

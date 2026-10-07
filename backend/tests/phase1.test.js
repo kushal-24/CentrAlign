@@ -3,9 +3,22 @@ import assert from "node:assert/strict";
 import { readConfig } from "../src/config.js";
 import { app as siteApp } from "../src/site/server.js";
 import { app as agentApp } from "../src/agent/index.js";
-import { graphSmoke } from "../scripts/smoke.js";
 
 const base = { MONGODB_URI: "mongodb://127.0.0.1:27017" };
+
+test("LLM configuration selects Groq and validates only the selected provider key", () => {
+    const config = readConfig({ ...base, GROQ_API_KEY: "test-key" }, { requireLLM: true });
+    assert.equal(config.LLM_PROVIDER, "groq");
+    assert.equal(config.GROQ_MODEL, "openai/gpt-oss-20b");
+    assert.equal(
+        readConfig({ ...base, GROQ_API_KEY: "test-key", LLM_PROVIDER: "gemini" }).LLM_PROVIDER,
+        "gemini",
+    );
+    assert.throws(
+        () => readConfig({ ...base, LLM_PROVIDER: "groq" }, { requireLLM: true }),
+        /GROQ_API_KEY/,
+    );
+});
 
 test("configuration defaults and explicit headless parsing", () => {
     const config = readConfig(base);
@@ -72,13 +85,11 @@ test("site redirects to browsing and health reports disconnected Mongo accuratel
     });
 });
 
-test("agent health starts and later-phase task routes remain unavailable", async () => {
+test("agent health starts and task input is validated", async () => {
     await withServer(agentApp, async (url) => {
         const health = await fetch(`${url}/health`);
         assert.equal(health.status, 503);
         assert.equal((await health.json()).data.service, "MatchPilot");
-        assert.equal((await fetch(`${url}/tasks`, { method: "POST" })).status, 404);
+        assert.equal((await fetch(`${url}/tasks`, { method: "POST" })).status, 400);
     });
 });
-
-test("LangGraph pauses and resumes the same saved thread", graphSmoke);
