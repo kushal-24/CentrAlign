@@ -1,1 +1,2 @@
-// Phase 5 onward: tool registry and Zod schemas.
+export { createBrowserTools, browserSchemas } from "./browser.js";
+export { createSessionManager } from "./sessions.js";
