@@ -11,16 +11,27 @@ test("Phase 5 navigation permits website flows and excludes alternate/operator r
     for (const path of [
         "/",
         "/matches?status=upcoming#explore",
+        "/matches/200000000000000000000003",
         "/matches/200000000000000000000003/book",
+        "/matches/200000000000000000000003/waitlist",
+        "/bookings",
+        "/bookings/300000000000000000000001",
         "/bookings/300000000000000000000001/cancel",
         "/profile",
         "/inbox",
         "/session/demo",
-    ])
+        "/session/close",
+    ]) {
         assert.equal(allowedUrl(path, site), new URL(path, site).href);
+    }
+
     for (const path of [
         "/admin/clock",
         "/tasks",
+        "/tasks/demo/approve",
+        "/other-page",
+        "/matches/not-an-id/book",
+        "/matches/200000000000000000000003/delete",
         "/matches/../admin/clock",
         "/%61dmin/clock",
         "/matches/%2e%2e/%61dmin/clock",
@@ -29,8 +40,9 @@ test("Phase 5 navigation permits website flows and excludes alternate/operator r
         "https://example.com/matches",
         "javascript:alert(1)",
         "http://name:pass@127.0.0.1:4000/matches",
-    ])
+    ]) {
         assert.throws(() => allowedUrl(path, site));
+    }
 });
 
 test("Phase 5 schemas reject unsafe references, paths, arbitrary task IDs and malformed approvals", () => {
