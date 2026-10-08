@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1040" viewBox="0 0 1200 1040" role="img" aria-labelledby="title desc">
+  <title id="title">Production MatchPilot LangGraph</title>
+  <desc id="desc">Phase 6 flows through understand, plan, agent, tools and guard, looping or completing. Phase 7 adds external approval resume. Phase 8 adds independent action verification with two repair attempts. Solid routes implemented in Phase 6; dashed routes are future extensions.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1L9 5L1 9" fill="none" stroke="#bbb8ca" stroke-width="1.5"/></marker>
+    <style>text{font-family:system-ui,sans-serif;fill:#eeeaf7;font-size:16px}.small{font-size:13px;fill:#bdb8cf}.heading{font-size:26px;font-weight:600}.edge{fill:none;stroke:#bbb8ca;stroke-width:1.6;marker-end:url(#arrow)}.futureEdge{fill:none;stroke:#dfb66b;stroke-width:1.6;stroke-dasharray:7 5;marker-end:url(#arrow)}.node{fill:#352f72;stroke:#a69bea}.tool{fill:#145047;stroke:#74cbb6}.future{fill:#47351e;stroke:#dfb66b;stroke-dasharray:7 5}.terminal{fill:#373641;stroke:#aaa6b7}</style>
+  </defs>
+  <rect width="1200" height="1040" rx="16" fill="#202027"/>
+  <text x="35" y="43" class="heading">MatchPilot · Production LangGraph</text>
+  <text x="35" y="69" class="small">Phase 6 implemented · Dashed paths are Phase 7/8 additions · Final live API check blocked by provider quota/availability</text>
+  <rect x="280" y="95" width="180" height="40" rx="20" class="terminal"/><text x="370" y="121" text-anchor="middle">__start__</text>
+  <path d="M370 135V165" class="edge"/>
+  <rect x="230" y="165" width="280" height="65" rx="9" class="node"/><text x="370" y="190" text-anchor="middle">understand</text><text x="370" y="212" text-anchor="middle" class="small">Extract goal, criteria and task kind</text>
+  <path d="M370 230V260" class="edge"/>
+  <rect x="230" y="260" width="280" height="65" rx="9" class="node"/><text x="370" y="285" text-anchor="middle">makePlan</text><text x="370" y="307" text-anchor="middle" class="small">Build a short high-level plan</text>
+  <path d="M370 325V370" class="edge"/>
+  <rect x="230" y="370" width="280" height="70" rx="9" class="node"/><text x="370" y="396" text-anchor="middle">agent</text><text x="370" y="420" text-anchor="middle" class="small">Gemini chooses one generic tool</text>
+  <path d="M230 389H165V344H280V370" class="edge"/><text x="35" y="332" class="small">No call: nudge once</text>
+  <path d="M370 440V490" class="edge"/><text x="389" y="469" class="small">One valid tool call</text>
+  <rect x="230" y="490" width="280" height="80" rx="9" class="tool"/><text x="370" y="516" text-anchor="middle">tools</text><text x="370" y="539" text-anchor="middle" class="small">Browser / db_query / remember / finish</text><text x="370" y="558" text-anchor="middle" class="small">Matched ToolMessage + observation</text>
+  <path d="M370 570V645" class="edge"/>
+  <path d="M510 405H605V668H510" class="edge"/><text x="618" y="435" class="small">Invalid call /</text><text x="618" y="454" class="small">no call again</text>
+  <rect x="230" y="645" width="280" height="80" rx="9" class="node"/><text x="370" y="671" text-anchor="middle">guard</text><text x="370" y="694" text-anchor="middle" class="small">Action cap → one finish-only turn</text><text x="370" y="713" text-anchor="middle" class="small">Errors / repeats stop; finish → complete</text>
+  <path d="M230 688H95V419H230" class="edge"/><text x="112" y="610" class="small">Continue</text>
+  <path d="M370 725V845" class="edge"/><text x="35" y="774" class="small">Phase 6: grounded read-only finish, or failure</text><text x="35" y="796" class="small">Action success requires Phase 8 verification</text>
+  <rect x="230" y="845" width="280" height="70" rx="9" class="node"/><text x="370" y="871" text-anchor="middle">complete</text><text x="370" y="895" text-anchor="middle" class="small">Save honest result; release task browser</text>
+  <path d="M370 915V942" class="edge"/><rect x="280" y="942" width="180" height="40" rx="20" class="terminal"/><text x="370" y="968" text-anchor="middle">__end__</text>
+  <path d="M510 530H745" class="futureEdge"/>
+  <rect x="745" y="490" width="380" height="100" rx="9" class="future"/><text x="763" y="516">Approval pause inside tools</text><text x="763" y="539" class="small">Existing marked-click gate: interrupt(proposal)</text><text x="763" y="559" class="small">Phase 7: approve/reject API → Command(resume)</text><text x="763" y="578" class="small">Same thread; recheck target; no write while paused</text>
+  <path d="M745 580H680V561H510" class="futureEdge"/>
+  <text x="745" y="616" class="small">Gate exists; external resume API comes later</text>
+  <path d="M510 709H745" class="futureEdge"/><text x="535" y="742" class="small">Phase 8: action finish</text>
+  <rect x="745" y="665" width="380" height="100" rx="9" class="future"/><text x="763" y="691">verify · Phase 8 extension</text><text x="763" y="715" class="small">Independent browser + database state evidence</text><text x="763" y="735" class="small">Pass → complete; fail → bounded repair</text><text x="763" y="754" class="small">Exhausted repair → complete with failure</text>
+  <path d="M935 765V882H510" class="futureEdge"/><text x="728" y="862" class="small">Verified / repair exhausted</text>
+  <path d="M1125 700H1168V389H510" class="futureEdge"/><text x="780" y="373" class="small">Repair → agent (at most 2 attempts)</text>
+  <text x="35" y="1016" class="small">Legend: purple = nodes · green = tools · grey = start/end · solid = Phase 6 · dashed amber = Phase 7/8 additions</text>
+</svg>
