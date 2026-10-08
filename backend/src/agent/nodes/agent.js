@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 import { getAgentPrompt } from "../prompt.js";
+import { compactHistory, selectAgentTools } from "../context.js";
 import { invokeModel, bindAgentTools, isMalformedToolCall, salvageFinishText } from "../llm.js";
 
 export function buildAgentMessages(state, context) {
@@ -8,26 +9,28 @@ export function buildAgentMessages(state, context) {
     return [
         new SystemMessage(getAgentPrompt(state, context)),
         new HumanMessage(state.task),
-        ...state.messages,
+        ...compactHistory(state.messages),
     ];
 }
 
 export async function callAgent(state, context) {
+    if (state.recoveryActive && state.llmRecoveryCalls >= 1)
+        return { pendingTool: null, failure: "Browser recovery budget exhausted after one LLM recovery attempt." };
     if (state.stepCount > context.maxSteps)
         return { pendingTool: null, failure: "Task step limit reached." };
 
     // Reserve one final turn for a summary, without allowing more actions.
     const finalTurn = state.stepCount === context.maxSteps;
-    const tools = finalTurn
-        ? context.registry.tools.filter((entry) => entry.name === "finish")
-        : context.registry.tools;
+    const tools = selectAgentTools(state, context.registry, finalTurn);
     const model = bindAgentTools(context.model, tools);
     let response;
     try {
         response = await invokeModel(
             model,
             buildAgentMessages(state, context),
-            context.modelOptions,
+            state.recoveryActive
+                ? { ...context.modelOptions, attempts: 1 }
+                : context.modelOptions,
         );
     } catch (error) {
         if (!isMalformedToolCall(error.cause)) throw error;
@@ -71,7 +74,7 @@ export async function callAgent(state, context) {
         typeof calls[0].id !== "string" ||
         !calls[0].id ||
         calls[0].id.length > 120 ||
-        !context.registry.byName.has(calls[0].name)
+        !tools.some((entry) => entry.name === calls[0].name)
     ) {
         const missing = calls.length === 0;
         return {

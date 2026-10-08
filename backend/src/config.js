@@ -27,6 +27,8 @@ const schema = z.object({
     AGENT_PORT: port.default(5000),
     STUDENT_EMAIL: z.string().email().optional(),
     LLM_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(60).default(4),
+    GROQ_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(256).max(8192).default(2048),
+    MAX_LLM_CALLS: z.coerce.number().int().min(1).max(200).default(30),
     MAX_STEPS: z.coerce.number().int().positive().default(25),
     HEADLESS: z
         .enum(["true", "false"])

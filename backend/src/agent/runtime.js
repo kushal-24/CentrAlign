@@ -59,7 +59,12 @@ export function createRuntime(options = {}) {
                           }),
                     maxSteps: config.MAX_STEPS,
                     siteUrl: config.SITE_URL,
-                    modelOptions: { limiter, ...options.modelOptions, signal: entry.abort.signal },
+                    modelOptions: {
+                        limiter,
+                        ...options.modelOptions,
+                        budget: { count: 0, limit: config.MAX_LLM_CALLS ?? 30 },
+                        signal: entry.abort.signal,
+                    },
                     closeSession: manager.closeSession,
                 };
             }
@@ -112,9 +117,12 @@ export function createRuntime(options = {}) {
                 pendingInterrupt: null,
                 result: {
                     success: false,
-                    summary: isDailyQuotaError(error.cause)
+                    summary: error.cause?.code === "LLM_BUDGET_EXCEEDED"
+                        ? "Task reasoning budget exhausted. Inspect the trace and any action evidence before retrying."
+                        : isDailyQuotaError(error.cause)
                         ? "Gemini daily quota exhausted. Retry after quota reset or update local provider configuration."
                         : "Task failed. Check configuration/provider/site availability or start a new task after restart.",
+                    ...(entry.state?.verification ? { evidence: entry.state.verification } : {}),
                     node: error.executionNode ?? "runtime",
                     providerStatus: Number.isInteger(error.cause?.status)
                         ? error.cause.status

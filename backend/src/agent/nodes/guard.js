@@ -22,6 +22,25 @@ export function guard(state, context) {
         repetitions += 1;
 
     let failure = state.failure;
+    let recoveryActive = state.recoveryActive;
+    let recoveryFailure = state.recoveryFailure;
+    const observation = state.lastObservation;
+    const browserError = observation?.browserFailure;
+    const browserSucceeded = observation?.success && call?.name?.startsWith("browser_") &&
+        !["browser_snapshot", "browser_screenshot"].includes(call.name);
+
+    if (browserSucceeded) {
+        recoveryActive = false;
+        recoveryFailure = null;
+    } else if (browserError) {
+        recoveryActive = true;
+        recoveryFailure = browserError;
+        if (browserError.terminal) failure = browserError.message;
+    }
+    // A DB read, snapshot, invalid tool choice or missing call cannot resolve a browser failure.
+    if (recoveryActive && state.llmRecoveryCalls >= 1 && !observation?.humanAnswer)
+        failure = failure ?? "Browser recovery budget exhausted after one LLM recovery attempt.";
+
     if (repetitions >= 5) failure = "Repeated action limit reached.";
     if (state.errorCount >= 3)
         failure = "Repeated tool errors; task stopped without retrying a submission.";
@@ -43,6 +62,8 @@ export function guard(state, context) {
 
     return {
         repeatHistory: history,
+        recoveryActive,
+        recoveryFailure,
         failure,
         warning:
             repetitions >= 3

@@ -1,5 +1,6 @@
 import { ToolMessage } from "@langchain/core/messages";
 import { isGraphInterrupt } from "@langchain/langgraph";
+import { compactObservation } from "../context.js";
 
 export function toolObservation(result) {
     if (typeof result === "string") return JSON.parse(result);
@@ -27,7 +28,20 @@ export async function runTool(state, context) {
     const update = {
         lastObservation: observation,
     };
-    if (observation.snapshot) update.latestSnapshot = observation.snapshot;
+    if (observation.snapshot) {
+        update.latestSnapshot = observation.snapshot;
+        update.observationWindow = observation.observationWindow ?? {};
+    }
+    update.actionHistory = [...(state.actionHistory ?? []), {
+        tool: call.name,
+        success: observation.success,
+        ...(call.args.ref ? { ref: call.args.ref } : {}),
+        ...(call.args.url ? { url: call.args.url } : {}),
+        ...(observation.records ? { ids: observation.records.map((record) => record._id) } : {}),
+        ...(observation.completed ? { completed: observation.completed } : {}),
+        ...(observation.approvedAction ? { approvedAction: true } : {}),
+        ...(!observation.success ? { error: String(observation.observation).slice(0, 300) } : {}),
+    }];
     if (observation.approvedAction) update.hasAction = true;
     if (observation.humanAnswer)
         update.clarifications = [
@@ -49,24 +63,27 @@ export async function runTool(state, context) {
             update.memory = { ...state.memory, [key]: value };
         }
     }
-    if (call.name === "finish" && observation.success) update.finishSummary = observation.finish;
+    if (call.name === "finish" && observation.success) {
+        if (state.hasAction) {
+            const criteria = observation.criteria ?? [];
+            const supported = state.verification?.success &&
+                criteria.length === state.successCriteria.length &&
+                criteria.every((entry, index) => entry.met &&
+                    entry.criterion === state.successCriteria[index]);
+            if (!supported)
+                update.failure = "Verified action does not establish every requested success criterion.";
+        }
+        update.finishSummary = observation.finish;
+    }
 
     update.errorCount = observation.success ? 0 : state.errorCount + 1;
 
-    // The latest snapshot already reaches the model through the agent prompt; do not repeat it per tool message.
-    const { snapshot, ...modelObservation } = observation;
-    const text = JSON.stringify(
-        snapshot ? { ...modelObservation, snapshot: "see Latest page" } : observation,
-    );
-    const bounded =
-        text.length <= 26000
-            ? text
-            : JSON.stringify({
-                  success: observation.success,
-                  observation:
-                      "Large observation omitted; consult the latest snapshot or narrow the query.",
-              });
-    const message = new ToolMessage({ content: bounded, tool_call_id: call.id, name: call.name });
+    // Send compact records; preserve full observations in lastObservation and the persisted trace.
+    const message = new ToolMessage({
+        content: JSON.stringify(compactObservation(observation)),
+        tool_call_id: call.id,
+        name: call.name,
+    });
     update.messages = [...state.messages, message].slice(-12);
 
     return update;

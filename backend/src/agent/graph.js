@@ -16,8 +16,10 @@ export function routeAfterAgent(state) {
 
 export function routeAfterGuard(state) {
     if (state.failure) return "complete";
+    if (state.hasAction && !state.verification) return "verify";
     if (state.finishSummary)
-        return state.taskKind === "read" && !state.hasAction ? "complete" : "verify";
+        return state.verification?.success || state.taskKind === "read" && !state.hasAction
+            ? "complete" : "verify";
     return "agent";
 }
 
@@ -38,6 +40,9 @@ export function createAgentGraph(dependencies) {
 
             return {
                 ...update,
+                llmCallCount: context.modelOptions?.budget?.count ?? state.llmCallCount,
+                ...(name === "agent" && state.recoveryActive && state.llmRecoveryCalls < 1
+                    ? { llmRecoveryCalls: state.llmRecoveryCalls + 1 } : {}),
                 trace: {
                     node: name,
                     durationMs: Math.round(performance.now() - started),
@@ -65,7 +70,7 @@ export function createAgentGraph(dependencies) {
         .addConditionalEdges("agent", routeAfterAgent, ["agent", "tools", "guard"])
         .addEdge("tools", "guard")
         .addConditionalEdges("guard", routeAfterGuard, ["agent", "verify", "complete"])
-        .addEdge("verify", "complete")
+        .addConditionalEdges("verify", (state) => state.failure ? "complete" : "agent", ["complete", "agent"])
         .addEdge("complete", END)
         .compile({ checkpointer: dependencies.checkpointer ?? new MemorySaver() });
 }

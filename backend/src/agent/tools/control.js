@@ -81,17 +81,24 @@ export function createControlTools(options = {}) {
     );
 
     const finish = tool(
-        async ({ summary }) =>
+        async ({ summary, criteria }) =>
             JSON.stringify({
                 success: true,
                 finish: summary,
+                criteria,
                 observation: "Finish requested; guard determines whether completion is supported.",
             }),
         {
             name: "finish",
             description:
                 "Request completion with a concise answer grounded in observations. This is not proof of a successful website mutation.",
-            schema: z.object({ summary: z.string().trim().min(1).max(4000) }).strict(),
+            schema: z.object({
+                summary: z.string().trim().min(1).max(4000),
+                criteria: z.array(z.object({
+                    criterion: z.string().min(1).max(500),
+                    met: z.boolean(),
+                }).strict()).min(1).max(8).optional(),
+            }).strict(),
         },
     );
 

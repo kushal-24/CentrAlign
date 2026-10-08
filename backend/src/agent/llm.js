@@ -9,6 +9,7 @@ export function createLLM() {
         return new ChatGroq({
             apiKey: config.GROQ_API_KEY,
             model: config.GROQ_MODEL,
+            maxTokens: config.GROQ_MAX_OUTPUT_TOKENS,
             temperature: 0,
             maxRetries: 0,
         });
@@ -106,8 +107,21 @@ export async function invokeModel(model, input, options = {}) {
 
     for (let attempt = 0; attempt < attempts; attempt += 1) {
         try {
+            if (options.budget?.count >= options.budget?.limit) {
+                const error = new Error("Agent reasoning budget exceeded.");
+                error.code = "LLM_BUDGET_EXCEEDED";
+                throw error;
+            }
             // Every attempt is a provider request, so each one waits for the limiter.
             await options.limiter?.acquire(options.signal);
+            if (options.budget) {
+                if (options.budget.count >= options.budget.limit) {
+                    const error = new Error("Agent reasoning budget exceeded. No further model requests were made.");
+                    error.code = "LLM_BUDGET_EXCEEDED";
+                    throw error;
+                }
+                options.budget.count += 1;
+            }
             const timeout = AbortSignal.timeout(options.timeout ?? 30000);
             const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
             return await model.invoke(input, { signal });
