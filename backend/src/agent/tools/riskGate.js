@@ -26,8 +26,10 @@ export async function inspectAction(session, ref) {
             target: element.outerHTML,
             label: clean(element.getAttribute("aria-label") || element.innerText || element.value),
             url: location.href,
-            destination: element.formAction || form?.action || element.href || location.href,
-            method: element.formMethod || form?.method || "get",
+            destination: element.hasAttribute("formaction")
+                ? element.formAction
+                : form?.action || element.href || location.href,
+            method: element.hasAttribute("formmethod") ? element.formMethod : form?.method || "get",
             values,
             visibleDetails: clean(
                 (document.querySelector("main") ?? document.body).innerText,
@@ -41,7 +43,7 @@ export async function inspectAction(session, ref) {
     return { handle, details, fingerprint };
 }
 
-export async function approveClick(session, ref) {
+export async function approveClick(session, ref, verifier) {
     if (session.pending && session.pending.ref !== ref) {
         throw new Error("An approval is pending for another target. Resume or reject it first.");
     }
@@ -70,6 +72,17 @@ export async function approveClick(session, ref) {
             fields: action.details.values,
             visibleDetails: action.details.visibleDetails,
         };
+        if (verifier) {
+            try {
+                session.pending.details = await verifier.capture(
+                    session.pending.proposalId,
+                    action.details,
+                );
+            } catch (error) {
+                session.pending = null;
+                throw error;
+            }
+        }
     }
     const proposal = session.pending;
 
@@ -83,12 +96,26 @@ export async function approveClick(session, ref) {
         proposal.taskId !== session.taskId ||
         proposal.ref !== ref
     ) {
-        throw new Error("Invalid or mismatched approval. No action executed.");
+        throw Object.assign(new Error("Invalid or mismatched approval. No action executed."), {
+            actionStopped: true,
+        });
     }
-    if (!parsed.data.approved) throw new Error("Action rejected. No action executed.");
+    if (!parsed.data.approved)
+        throw Object.assign(new Error("Action rejected. No action executed."), {
+            actionStopped: true,
+        });
 
     const current = await inspectAction(session, ref);
     if (current.fingerprint !== proposal.fingerprint)
-        throw new Error("Action details changed. A fresh proposal and approval are required.");
+        throw Object.assign(
+            new Error("Action details changed. A fresh proposal and approval are required."),
+            { actionStopped: true },
+        );
+    try {
+        await verifier?.approve(proposal.proposalId);
+    } catch (error) {
+        error.actionStopped = true;
+        throw error;
+    }
     return true;
 }

@@ -10,11 +10,18 @@ export function createScriptedModel(calls, options = {}) {
                     schema.shape.goal
                         ? {
                               goal: "Complete the requested MatchDay task",
-                              successCriteria: ["Use observed facts"],
+                              successCriteria: options.successCriteria ?? ["Use observed facts"],
                               assumptions: [],
                               taskKind: options.taskKind ?? "read",
                           }
-                        : { plan: ["Inspect relevant facts", "Finish with the observed result"] },
+                        : schema.shape.criteria
+                          ? {
+                                criteria: (options.successCriteria ?? ["Use observed facts"]).map(
+                                    (criterion) => ({ criterion, met: options.verifyMet ?? true }),
+                                ),
+                                summary: "Action independently verified from database records.",
+                            }
+                          : { plan: ["Inspect relevant facts", "Finish with the observed result"] },
             };
         },
         bindTools() {

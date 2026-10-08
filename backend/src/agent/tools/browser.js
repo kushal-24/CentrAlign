@@ -25,7 +25,7 @@ export const browserSchemas = {
 };
 const evidenceRoot = fileURLToPath(new URL("../../../evidence/", import.meta.url));
 
-export function createBrowserTools(manager, taskId) {
+export function createBrowserTools(manager, taskId, options = {}) {
     safeTaskId(taskId);
 
     async function runTool(name, args) {
@@ -93,7 +93,7 @@ export function createBrowserTools(manager, taskId) {
                     throw new Error("Reference is not a checkbox.");
                 await handle.setChecked(input.checked);
             } else if (name === "browser_click") {
-                const approved = await approveClick(session, input.ref);
+                const approved = await approveClick(session, input.ref, options.verifier);
                 const handle = await resolveRef(session, input.ref);
                 const clickable = await handle.evaluate((element) =>
                     element.matches(
@@ -131,6 +131,7 @@ export function createBrowserTools(manager, taskId) {
             const snapshot = await takeSnapshot(session);
             return {
                 success: !session.blockedNavigation,
+                approvedAction: actionStarted && session.approvedClick,
                 observation: session.blockedNavigation
                     ? "Navigation was blocked by the website boundary."
                     : session.dialogOutcome
@@ -142,6 +143,7 @@ export function createBrowserTools(manager, taskId) {
             if (isGraphInterrupt(error)) throw error;
             return {
                 success: false,
+                actionStopped: Boolean(error.actionStopped) || actionStarted,
                 observation: actionStarted
                     ? "Click outcome may be uncertain. Inspect a fresh snapshot before any further action; do not repeat the submission."
                     : error.message,

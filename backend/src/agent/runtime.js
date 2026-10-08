@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { MemorySaver } from "@langchain/langgraph";
+import { MemorySaver, Command } from "@langchain/langgraph";
 import { readConfig } from "../config.js";
 import { User } from "../site/models/index.js";
 import apiError from "../utils/apiError.js";
@@ -39,29 +39,31 @@ export function createRuntime(options = {}) {
 
     async function executeTask(taskId, state) {
         const entry = active.get(taskId);
-        let sequence = 0;
         try {
-            const account = options.resolveAccount
-                ? await options.resolveAccount()
-                : await User.findOne({ email: config.STUDENT_EMAIL.toLowerCase().trim() })
-                      .select("_id email")
-                      .lean();
-            if (!account?._id) throw new Error("Configured account unavailable.");
+            if (!entry.context) {
+                const account = options.resolveAccount
+                    ? await options.resolveAccount()
+                    : await User.findOne({ email: config.STUDENT_EMAIL.toLowerCase().trim() })
+                          .select("_id email")
+                          .lean();
+                if (!account?._id) throw new Error("Configured account unavailable.");
 
-            await manager.createSession(taskId);
-            entry.context = {
-                model: options.model ?? createLLM(),
-                registry: options.createTools
-                    ? options.createTools(manager, taskId, account)
-                    : createTaskTools(manager, taskId, {
-                          userId: String(account._id),
-                          email: account.email,
-                      }),
-                maxSteps: config.MAX_STEPS,
-                siteUrl: config.SITE_URL,
-                modelOptions: { limiter, ...options.modelOptions, signal: entry.abort.signal },
-                closeSession: manager.closeSession,
-            };
+                await manager.createSession(taskId);
+                entry.context = {
+                    model: options.model ?? createLLM(),
+                    registry: options.createTools
+                        ? options.createTools(manager, taskId, account)
+                        : createTaskTools(manager, taskId, {
+                              userId: String(account._id),
+                              email: account.email,
+                          }),
+                    maxSteps: config.MAX_STEPS,
+                    siteUrl: config.SITE_URL,
+                    modelOptions: { limiter, ...options.modelOptions, signal: entry.abort.signal },
+                    closeSession: manager.closeSession,
+                };
+            }
+            entry.state ??= state;
 
             const stream = await graph.stream(state, {
                 configurable: { thread_id: taskId },
@@ -70,28 +72,36 @@ export function createRuntime(options = {}) {
             });
             for await (const chunk of stream) {
                 if (chunk.__interrupt__?.length) {
-                    entry.paused = true;
+                    const pending = chunk.__interrupt__[0].value;
+                    if (!["approval", "input"].includes(pending?.type))
+                        throw new Error("Unsupported interrupt type.");
+                    const status = pending.type === "input" ? "needs_input" : "awaiting_approval";
                     await store.recordProgress(taskId, {
-                        status: "awaiting_approval",
-                        pendingInterrupt: chunk.__interrupt__[0].value,
+                        status,
+                        pendingInterrupt: pending,
                     });
                     await store.appendTrace(taskId, {
-                        sequence: ++sequence,
+                        sequence: ++entry.sequence,
                         node: "tools",
-                        summary: "Paused for human approval; no marked click executed.",
-                        status: "awaiting_approval",
+                        summary:
+                            pending.type === "input"
+                                ? "Paused for a human answer."
+                                : "Paused for human approval; no marked click executed.",
+                        status,
                         durationMs: 0,
                     });
+                    entry.pending = pending;
+                    entry.paused = true;
                     continue;
                 }
 
                 for (const update of Object.values(chunk)) {
-                    state = { ...state, ...update };
-                    await store.recordProgress(taskId, state);
+                    entry.state = { ...entry.state, ...update };
+                    await store.recordProgress(taskId, entry.state);
                     await store.appendTrace(taskId, {
                         ...update.trace,
-                        sequence: ++sequence,
-                        status: state.status,
+                        sequence: ++entry.sequence,
+                        status: entry.state.status,
                     });
                 }
             }
@@ -112,7 +122,7 @@ export function createRuntime(options = {}) {
                 },
             });
             await store.appendTrace(taskId, {
-                sequence: ++sequence,
+                sequence: ++entry.sequence,
                 node: "runtime",
                 summary: "Task stopped after an execution or persistence error.",
                 status: "failed",
@@ -120,6 +130,7 @@ export function createRuntime(options = {}) {
             });
             entry.paused = false;
         } finally {
+            entry.running = false;
             if (!entry.paused) await closeTask(taskId);
         }
     }
@@ -139,6 +150,9 @@ export function createRuntime(options = {}) {
             paused: false,
             job: null,
             preparing: null,
+            sequence: 0,
+            running: true,
+            pending: null,
         };
         active.set(taskId, entry);
         try {
@@ -160,6 +174,52 @@ export function createRuntime(options = {}) {
 
         entry.job = executeTask(taskId, createInitialState(taskId, task));
         // Failures in error reporting must also be handled, never left as unhandled rejections.
+        entry.job.catch(async () => {
+            entry.paused = false;
+            await closeTask(taskId).catch(() => {});
+        });
+        return { taskId, status: "running" };
+    }
+
+    async function resumeTask(taskId, type, response) {
+        if (closing) throw new apiError(503, "Agent is shutting down.");
+        const entry = active.get(taskId);
+        if (!entry) {
+            if (!(await store.readRun(taskId))) throw new apiError(404, "Task not found.");
+            throw new apiError(409, "Task is terminal or its checkpoint is unavailable.");
+        }
+        const key = type === "input" ? "questionId" : "proposalId";
+        if (
+            !entry.paused ||
+            entry.running ||
+            entry.pending?.type !== type ||
+            entry.pending[key] !== response[key]
+        )
+            throw new apiError(
+                409,
+                "No matching pending question or approval, or resume already in progress.",
+            );
+
+        // Reserve before any await so concurrent API requests cannot replay a submission.
+        entry.running = true;
+        entry.paused = false;
+        try {
+            entry.preparing = store.recordProgress(taskId, {
+                status: "running",
+                pendingInterrupt: null,
+            });
+            await entry.preparing;
+        } catch {
+            entry.running = false;
+            entry.paused = true;
+            throw new apiError(503, "Could not persist resume; no action executed.");
+        }
+        if (closing) {
+            entry.running = false;
+            throw new apiError(503, "Agent stopped before resume execution.");
+        }
+        entry.pending = null;
+        entry.job = executeTask(taskId, new Command({ resume: response }));
         entry.job.catch(async () => {
             entry.paused = false;
             await closeTask(taskId).catch(() => {});
@@ -189,6 +249,7 @@ export function createRuntime(options = {}) {
 
     return {
         startTask,
+        resumeTask,
         executeTask,
         getActiveTask: (taskId) => active.get(taskId),
         closeTask,

@@ -20,7 +20,7 @@ export function createAgentApp(runtime = getRuntime) {
             new apiResponse(
                 {
                     service: "MatchPilot",
-                    phase: 6,
+                    phase: 7,
                     database: connected ? "connected" : "disconnected",
                 },
                 status,

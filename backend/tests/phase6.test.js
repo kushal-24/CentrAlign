@@ -350,7 +350,7 @@ test("Phase 6 HTTP accepts promptly, validates input and exposes persisted task 
         assert.equal((await fetch(`${origin}/tasks/${randomUUID()}`)).status, 404);
         assert.equal(
             (await fetch(`${origin}/tasks/${taskId}/approve`, { method: "POST" })).status,
-            404,
+            400,
         );
     } finally {
         await runtime.closeRuntime();

@@ -28,6 +28,12 @@ export async function runTool(state, context) {
         lastObservation: observation,
     };
     if (observation.snapshot) update.latestSnapshot = observation.snapshot;
+    if (observation.approvedAction) update.hasAction = true;
+    if (observation.humanAnswer)
+        update.clarifications = [
+            ...(state.clarifications ?? []),
+            { question: observation.humanQuestion, answer: observation.humanAnswer },
+        ].slice(-8);
     if (
         observation.success &&
         ["db_query", "browser_goto", "browser_snapshot", "browser_back"].includes(call.name)

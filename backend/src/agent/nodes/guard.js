@@ -28,6 +28,7 @@ export function guard(state, context) {
     if (state.stepCount > context.maxSteps && !state.finishSummary)
         failure = "Task step limit reached.";
     if (
+        state.lastObservation?.actionStopped ||
         /uncertain|rejected|approval.*changed|proposal.*changed/i.test(
             state.lastObservation?.observation ?? "",
         )
@@ -36,9 +37,7 @@ export function guard(state, context) {
             "Action stopped after rejection, changed approval or uncertain submission. Inspect state before starting a new task.";
 
     if (state.finishSummary && !failure) {
-        if (state.taskKind !== "read")
-            failure = "Action completion requires independent Phase 8 verification.";
-        else if (!state.evidenceCount)
+        if (state.taskKind === "read" && !state.evidenceCount)
             failure = "Completion requires observed website or database evidence.";
     }
 

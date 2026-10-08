@@ -1,0 +1,102 @@
+{
+  "info": {
+    "name": "MatchPilot Phase 7 — questions and approvals",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Manual human interaction. Status saves pending IDs; approval is never automatic. Set agent_url to your running agent."
+  },
+  "variable": [
+    { "key": "agent_url", "value": "http://127.0.0.1:5001" },
+    { "key": "task_id", "value": "" },
+    { "key": "question_id", "value": "" },
+    { "key": "proposal_id", "value": "" },
+    { "key": "answer", "value": "Use the Bangalore ODI, one ticket." }
+  ],
+  "item": [
+    {
+      "name": "Create task",
+      "request": {
+        "method": "POST",
+        "url": "{{agent_url}}/tasks",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"task\": \"Find upcoming cricket matches in Bangalore under INR 1000.\"\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 202) pm.collectionVariables.set('task_id', pm.response.json().data.taskId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Task status — inspect before answering or approving",
+      "request": { "method": "GET", "url": "{{agent_url}}/tasks/{{task_id}}" },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  const pending = pm.response.json().data.pendingInterrupt;",
+              "  pm.collectionVariables.set('question_id', pending?.questionId || '');",
+              "  pm.collectionVariables.set('proposal_id', pending?.proposalId || '');",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Answer question",
+      "request": {
+        "method": "POST",
+        "url": "{{agent_url}}/tasks/{{task_id}}/answer",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"questionId\": \"{{question_id}}\",\n  \"answer\": \"{{answer}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      }
+    },
+    {
+      "name": "Approve exact proposed action",
+      "request": {
+        "method": "POST",
+        "url": "{{agent_url}}/tasks/{{task_id}}/approve",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"proposalId\": \"{{proposal_id}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      }
+    },
+    {
+      "name": "Reject proposed action",
+      "request": {
+        "method": "POST",
+        "url": "{{agent_url}}/tasks/{{task_id}}/reject",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"proposalId\": \"{{proposal_id}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      }
+    },
+    {
+      "name": "Ordered trace",
+      "request": { "method": "GET", "url": "{{agent_url}}/tasks/{{task_id}}/trace" }
+    }
+  ]
+}

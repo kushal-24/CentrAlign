@@ -6,6 +6,7 @@ import { callAgent } from "./nodes/agent.js";
 import { runTool } from "./nodes/tools.js";
 import { guard } from "./nodes/guard.js";
 import { complete } from "./nodes/complete.js";
+import { verify } from "./nodes/verify.js";
 
 export function routeAfterAgent(state) {
     if (state.failure) return "guard";
@@ -14,7 +15,10 @@ export function routeAfterAgent(state) {
 }
 
 export function routeAfterGuard(state) {
-    return state.failure || state.finishSummary ? "complete" : "agent";
+    if (state.failure) return "complete";
+    if (state.finishSummary)
+        return state.taskKind === "read" && !state.hasAction ? "complete" : "verify";
+    return "agent";
 }
 
 export function createAgentGraph(dependencies) {
@@ -53,13 +57,15 @@ export function createAgentGraph(dependencies) {
         .addNode("agent", node("agent", callAgent))
         .addNode("tools", node("tools", runTool))
         .addNode("guard", node("guard", guard))
+        .addNode("verify", node("verify", verify))
         .addNode("complete", node("complete", complete))
         .addEdge(START, "understand")
         .addEdge("understand", "makePlan")
         .addEdge("makePlan", "agent")
         .addConditionalEdges("agent", routeAfterAgent, ["agent", "tools", "guard"])
         .addEdge("tools", "guard")
-        .addConditionalEdges("guard", routeAfterGuard, ["agent", "complete"])
+        .addConditionalEdges("guard", routeAfterGuard, ["agent", "verify", "complete"])
+        .addEdge("verify", "complete")
         .addEdge("complete", END)
         .compile({ checkpointer: dependencies.checkpointer ?? new MemorySaver() });
 }
