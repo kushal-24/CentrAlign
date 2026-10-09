@@ -27,10 +27,11 @@ export async function startServer(app, port, name) {
 export async function runServer(start) {
     try {
         await start();
-    } catch {
+    } catch(error) {
         process.stderr.write(
             "Server startup failed. Check configuration, MongoDB access, and port availability.\n",
         );
+        console.error(error); 
         await mongoose.disconnect();
         process.exitCode = 1;
     }

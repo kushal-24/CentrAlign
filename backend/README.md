@@ -719,3 +719,64 @@ Offline schema/prompt sizing was performed without model, graph or browser
 execution. No live task or API request was run for these changes. The existing
 request-rate limiter is not token-aware: compaction lowers TPM pressure but does
 not guarantee every workload will remain within 8000 TPM.
+
+
+## Phase 9 evaluation harness
+
+Evaluation-only files live in `evals/` and `tests/helpers/eval-world.js`;
+they are not production entry points. The harness calls the existing production
+runtime without replacing its graph, model, tools, approval handling or verification.
+`tests/helpers/phase5-world.js` supplies `siteRecords()` snapshots and must remain
+available. Its Phase 5 reset function is not called.
+
+When you choose to run evaluations later, from `backend/`:
+
+```sh
+npm run evals -- --confirm-reset MatchDay_phase9_eval
+```
+
+This is destructive **only to the dedicated `MatchDay_phase9_eval` database**:
+before each scenario it transactionally replaces the six demo collections with
+production seed data and clears evaluation `agent_runs`. The exact confirmation
+is mandatory. The normal application database is not reset. MongoDB must support
+transactions (a replica set or Atlas). Existing MongoDB, LLM and student-account
+configuration and installed Playwright Chromium are prerequisites; no separate
+site or agent server needs to be started.
+
+Scenarios run sequentially in isolated child workers, each hosting the existing
+MatchDay app on an ephemeral loopback port and calling `createRuntime()`.
+Scripted answers must match the requested question; approvals must match the
+intended action, otherwise the harness rejects them. Waitlist `expectedPosition`
+is an outcome assertion, not a field in the production approval payload.
+Timeouts terminate the owned worker process group on macOS/Linux. Windows falls
+back to terminating the worker and needs separate browser-descendant cleanup
+validation. There is a 60-second pause between scenarios; provider quota errors
+can still occur, including when other processes share that quota.
+
+`tasks.json` is the executable expectation source. Add scenarios there without
+changing agent code. `ground_truth.json` retains the baseline seed oracle and
+mirrors the default scenarios' `taskExpectations` for review; it is not a second
+source of runtime expectations. `{{studentEmail}}` is replaced from existing
+configuration. Supported CLI options are `--tasks <path>`, `--repeat <1..20>`,
+`--demo-only`, and `--report <path-inside-backend/evidence/>`.
+
+Reports default to `evidence/phase9/evals-<timestamp>.json` and are saved after
+each completed scenario and during cleanup. They include individual assertions,
+failures, run results, ordered tool/node traces, scripted interactions and duration.
+Assertions use production `checkAction()` plus whole-database snapshots to detect
+unintended changes. A failed run may already have submitted an action; inspect
+its database assertions before drawing conclusions. Reports may contain task,
+attendee and receipt information, so review before sharing.
+
+An exclusive `evaluation_lock` document prevents concurrent harness resets.
+SIGINT/SIGTERM handling stops the active worker before releasing the owned lock
+and saving the report. Forced termination, machine shutdown or lost database
+connectivity can still leave a lock. The harness deliberately refuses to steal
+it: confirm no previous harness/worker remains before manually removing only
+that stale lock in `MatchDay_phase9_eval`. No database cleanup was performed as
+part of this recovery.
+
+This implementation was recovered using static inspection only. No tests,
+builds, evaluations, browser sessions or model/API requests were run. Live
+compatibility, scenario completion, approval matching, database assertions,
+timeout cleanup and interruption recovery still need testing later.

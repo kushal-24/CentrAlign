@@ -345,7 +345,10 @@
   ],
   "overlaps": [
     {
-      "matchIds": ["200000000000000000000009", "20000000000000000000000a"],
+      "matchIds": [
+        "200000000000000000000009",
+        "20000000000000000000000a"
+      ],
       "startsAt": "2026-10-13T13:30:00.000Z",
       "endsAt": "2026-10-13T15:00:00.000Z"
     }
@@ -356,5 +359,129 @@
     "All sold inventory is represented by the 16 seeded active bookings.",
     "Tokyo and Kolkata have different venue wall times but overlapping absolute intervals.",
     "Ticket tiers are deferred; each event has one price and one seat pool. M3 keeps two seats remaining, M5 pools 20 seats with 12 sold, and M7 pools 17 sold-out seats."
+  ],
+  "evaluationDatabase": "MatchDay_phase9_eval",
+  "taskExpectations": [
+    {
+      "id": "discover-upcoming-tennis",
+      "category": "discovery",
+      "status": "done",
+      "unchanged": true,
+      "summaryPatterns": [
+        "London",
+        "700"
+      ],
+      "recordAssertions": []
+    },
+    {
+      "id": "book-two-odi",
+      "category": "booking",
+      "status": "done",
+      "unchanged": false,
+      "summaryPatterns": [],
+      "recordAssertions": [],
+      "action": {
+        "kind": "book",
+        "matchId": "200000000000000000000003",
+        "title": "India vs Australia — ODI",
+        "quantity": 2,
+        "total": 1600,
+        "ownerName": "Demo Student",
+        "ownerEmail": "{{studentEmail}}"
+      }
+    },
+    {
+      "id": "cancel-full-refund",
+      "category": "cancellation",
+      "status": "done",
+      "unchanged": false,
+      "summaryPatterns": [
+        "1000"
+      ],
+      "recordAssertions": [],
+      "action": {
+        "kind": "cancel",
+        "matchId": "200000000000000000000009",
+        "bookingId": "300000000000000000000001",
+        "title": "Rovers vs Eastgate",
+        "quantity": 2,
+        "refund": 1000
+      }
+    },
+    {
+      "id": "waitlist-sold-out",
+      "category": "waitlist",
+      "status": "done",
+      "unchanged": false,
+      "summaryPatterns": [
+        "position.*1"
+      ],
+      "recordAssertions": [],
+      "action": {
+        "kind": "waitlist",
+        "matchId": "200000000000000000000007",
+        "title": "Hyderabad badminton final",
+        "quantity": 2,
+        "expectedPosition": 1
+      }
+    },
+    {
+      "id": "ambiguous-partial-inventory",
+      "category": "ambiguity",
+      "status": "done",
+      "unchanged": false,
+      "summaryPatterns": [],
+      "recordAssertions": [],
+      "action": {
+        "kind": "book",
+        "matchId": "200000000000000000000003",
+        "title": "India vs Australia — ODI",
+        "quantity": 2,
+        "total": 1600,
+        "ownerName": "Demo Student",
+        "ownerEmail": "{{studentEmail}}"
+      }
+    },
+    {
+      "id": "invalid-quantity",
+      "category": "invalid-request",
+      "status": "done",
+      "unchanged": true,
+      "summaryPatterns": [
+        "positive|at least.*1|minimum.*1|zero|invalid|greater than.*0"
+      ],
+      "recordAssertions": []
+    },
+    {
+      "id": "reject-booking",
+      "category": "approval-rejection",
+      "status": "failed",
+      "unchanged": true,
+      "summaryPatterns": [
+        "stopped|reject"
+      ],
+      "recordAssertions": []
+    },
+    {
+      "id": "insufficient-inventory",
+      "category": "inventory-safety",
+      "status": "done",
+      "unchanged": true,
+      "summaryPatterns": [
+        "2",
+        "insufficient|only|not enough|cannot|unavailable"
+      ],
+      "recordAssertions": []
+    },
+    {
+      "id": "closed-event",
+      "category": "closed-safety",
+      "status": "done",
+      "unchanged": true,
+      "summaryPatterns": [
+        "past|ended|closed|finished"
+      ],
+      "recordAssertions": []
+    }
   ]
 }

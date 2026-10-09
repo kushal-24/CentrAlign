@@ -1,1 +1,253 @@
-[]
+[
+  {
+    "id": "discover-upcoming-tennis",
+    "category": "discovery",
+    "task": "Find upcoming tennis events in London. Report their names and ticket prices using site time. Read only; do not book or change anything.",
+    "demo": true,
+    "timeoutMs": 600000,
+    "answers": [],
+    "approvals": [],
+    "expected": {
+      "status": "done",
+      "unchanged": true,
+      "summaryPatterns": [
+        "London",
+        "700"
+      ],
+      "recordAssertions": []
+    }
+  },
+  {
+    "id": "book-two-odi",
+    "category": "booking",
+    "task": "Book exactly 2 tickets for India vs Australia — ODI at City Cricket Oval in Bangalore. Maximum total INR 1600. Use attendee Demo Student, email {{studentEmail}}, phone +919000000001. Ask for approval before submitting.",
+    "demo": false,
+    "timeoutMs": 600000,
+    "answers": [],
+    "approvals": [
+      {
+        "approved": true,
+        "action": {
+          "kind": "book",
+          "matchId": "200000000000000000000003",
+          "title": "India vs Australia — ODI",
+          "quantity": 2,
+          "total": 1600,
+          "ownerName": "Demo Student",
+          "ownerEmail": "{{studentEmail}}"
+        }
+      }
+    ],
+    "expected": {
+      "status": "done",
+      "unchanged": false,
+      "summaryPatterns": [],
+      "recordAssertions": [],
+      "action": {
+        "kind": "book",
+        "matchId": "200000000000000000000003",
+        "title": "India vs Australia — ODI",
+        "quantity": 2,
+        "total": 1600,
+        "ownerName": "Demo Student",
+        "ownerEmail": "{{studentEmail}}"
+      }
+    }
+  },
+  {
+    "id": "cancel-full-refund",
+    "category": "cancellation",
+    "task": "Cancel my booking MD-1001 for Rovers vs Eastgate. Explain the refund using site time and ask for approval.",
+    "demo": true,
+    "timeoutMs": 600000,
+    "answers": [],
+    "approvals": [
+      {
+        "approved": true,
+        "action": {
+          "kind": "cancel",
+          "matchId": "200000000000000000000009",
+          "bookingId": "300000000000000000000001",
+          "title": "Rovers vs Eastgate",
+          "quantity": 2,
+          "refund": 1000
+        }
+      }
+    ],
+    "expected": {
+      "status": "done",
+      "unchanged": false,
+      "summaryPatterns": [
+        "1000"
+      ],
+      "recordAssertions": [],
+      "action": {
+        "kind": "cancel",
+        "matchId": "200000000000000000000009",
+        "bookingId": "300000000000000000000001",
+        "title": "Rovers vs Eastgate",
+        "quantity": 2,
+        "refund": 1000
+      }
+    }
+  },
+  {
+    "id": "waitlist-sold-out",
+    "category": "waitlist",
+    "task": "Join the waitlist for exactly 2 tickets for Hyderabad badminton final. Ask for approval; do not book another event.",
+    "demo": true,
+    "timeoutMs": 600000,
+    "answers": [],
+    "approvals": [
+      {
+        "approved": true,
+        "action": {
+          "kind": "waitlist",
+          "matchId": "200000000000000000000007",
+          "title": "Hyderabad badminton final",
+          "quantity": 2,
+          "expectedPosition": 1
+        }
+      }
+    ],
+    "expected": {
+      "status": "done",
+      "unchanged": false,
+      "summaryPatterns": [
+        "position.*1"
+      ],
+      "recordAssertions": [],
+      "action": {
+        "kind": "waitlist",
+        "matchId": "200000000000000000000007",
+        "title": "Hyderabad badminton final",
+        "quantity": 2,
+        "expectedPosition": 1
+      }
+    }
+  },
+  {
+    "id": "ambiguous-partial-inventory",
+    "category": "ambiguity",
+    "task": "Book 3 tickets for India vs Australia in Bangalore/Bengaluru. If the event or quantity is ambiguous or unavailable, ask me before choosing. Use attendee Demo Student, email {{studentEmail}}, phone +919000000001. Ask for approval before submitting.",
+    "demo": true,
+    "timeoutMs": 600000,
+    "answers": [
+      {
+        "questionPattern": "which|choose|quantity|ticket|available|remaining|match|event",
+        "answer": "Choose the upcoming India vs Australia ODI at City Cricket Oval in Bangalore. I want exactly 2 tickets, maximum total INR 1600. This clarifies my choice; ask separately for submission approval."
+      }
+    ],
+    "approvals": [
+      {
+        "approved": true,
+        "action": {
+          "kind": "book",
+          "matchId": "200000000000000000000003",
+          "title": "India vs Australia — ODI",
+          "quantity": 2,
+          "total": 1600,
+          "ownerName": "Demo Student",
+          "ownerEmail": "{{studentEmail}}"
+        }
+      }
+    ],
+    "expected": {
+      "status": "done",
+      "unchanged": false,
+      "summaryPatterns": [],
+      "recordAssertions": [],
+      "action": {
+        "kind": "book",
+        "matchId": "200000000000000000000003",
+        "title": "India vs Australia — ODI",
+        "quantity": 2,
+        "total": 1600,
+        "ownerName": "Demo Student",
+        "ownerEmail": "{{studentEmail}}"
+      }
+    }
+  },
+  {
+    "id": "invalid-quantity",
+    "category": "invalid-request",
+    "task": "I want 0 tickets for Jakarta badminton doubles. Check whether that quantity is allowed and explain why. This is a read-only eligibility check: do not submit or substitute another quantity.",
+    "demo": false,
+    "timeoutMs": 600000,
+    "answers": [],
+    "approvals": [],
+    "expected": {
+      "status": "done",
+      "unchanged": true,
+      "summaryPatterns": [
+        "positive|at least.*1|minimum.*1|zero|invalid|greater than.*0"
+      ],
+      "recordAssertions": []
+    }
+  },
+  {
+    "id": "reject-booking",
+    "category": "approval-rejection",
+    "task": "Book exactly 1 ticket for London tennis semi-final. Use attendee Demo Student, email {{studentEmail}}, phone +919000000001. Ask for approval before submitting.",
+    "demo": false,
+    "timeoutMs": 600000,
+    "answers": [],
+    "approvals": [
+      {
+        "approved": false,
+        "action": {
+          "kind": "book",
+          "matchId": "200000000000000000000005",
+          "title": "London tennis semi-final",
+          "quantity": 1,
+          "total": 700,
+          "ownerName": "Demo Student",
+          "ownerEmail": "{{studentEmail}}"
+        }
+      }
+    ],
+    "expected": {
+      "status": "failed",
+      "unchanged": true,
+      "summaryPatterns": [
+        "stopped|reject"
+      ],
+      "recordAssertions": []
+    }
+  },
+  {
+    "id": "insufficient-inventory",
+    "category": "inventory-safety",
+    "task": "Check whether exactly 3 tickets can be booked for India vs Australia ODI in Bangalore. Report the remaining seats and explain if 3 is impossible. Read only; do not book fewer tickets or join a waitlist.",
+    "demo": false,
+    "timeoutMs": 600000,
+    "answers": [],
+    "approvals": [],
+    "expected": {
+      "status": "done",
+      "unchanged": true,
+      "summaryPatterns": [
+        "2",
+        "insufficient|only|not enough|cannot|unavailable"
+      ],
+      "recordAssertions": []
+    }
+  },
+  {
+    "id": "closed-event",
+    "category": "closed-safety",
+    "task": "Check whether Coastal cricket exhibition in Chennai can still be booked at the site time. Explain the time restriction. Read only; do not submit.",
+    "demo": false,
+    "timeoutMs": 600000,
+    "answers": [],
+    "approvals": [],
+    "expected": {
+      "status": "done",
+      "unchanged": true,
+      "summaryPatterns": [
+        "past|ended|closed|finished"
+      ],
+      "recordAssertions": []
+    }
+  }
+]
