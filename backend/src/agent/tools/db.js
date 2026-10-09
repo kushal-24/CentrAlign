@@ -42,31 +42,53 @@ export const querySchema = z
     })
     .strict();
 
+class QueryValidationError extends Error {
+    constructor(code, message, hint) {
+        super(message);
+        this.code = code;
+        this.hint = hint;
+    }
+}
+
+const invalidQuery = (code, message, hint) => new QueryValidationError(code, message, hint);
+const label = (value) => JSON.stringify(String(value).slice(0, 80));
+
+export function queryErrorObservation(error) {
+    const known = error instanceof QueryValidationError;
+    const message = known ? error.message : "Query validation failed.";
+    const hint = known ? error.hint : "Check the advertised query schema and allowed fields.";
+    return {
+        success: false,
+        errorCode: known ? error.code : "INVALID_QUERY",
+        message,
+        hint,
+        observation: `${message} ${hint}`,
+    };
+}
+
 function validateValue(value, path) {
     if (value === null) return null;
 
     if (path.instance === "ObjectId") {
         if (typeof value !== "string" || !/^[a-f\d]{24}$/i.test(value))
-            throw new Error(
-                "Record IDs must be 24 hexadecimal characters. Config settings use key, not _id.",
-            );
+            throw invalidQuery("INVALID_RECORD_ID", "Record IDs must be 24 hexadecimal characters.", "Use an observed record ID. Config settings use key, not _id.");
         return new Types.ObjectId(value);
     }
     if (path.instance === "Date") {
         if (!isValidClockTime(value))
-            throw new Error("Dates must be valid ISO timestamps with timezone.");
+            throw invalidQuery("INVALID_DATE", `Field ${label(path.path)} requires a valid ISO timestamp with timezone.`, "Supply an ISO date and time including Z or a timezone offset.");
         return new Date(value);
     }
     if (path.instance === "Number") {
         if (typeof value !== "number" || !Number.isFinite(value))
-            throw new Error("Expected a finite number.");
+            throw invalidQuery("INVALID_NUMBER", `Field ${label(path.path)} requires a finite number.`, "Supply a JSON number, not quoted text.");
         return value;
     }
     if (path.instance === "Boolean") {
-        if (typeof value !== "boolean") throw new Error("Expected a boolean.");
+        if (typeof value !== "boolean") throw invalidQuery("INVALID_BOOLEAN", `Field ${label(path.path)} requires a boolean.`, "Supply true or false, not quoted text.");
         return value;
     }
-    if (typeof value !== "string" || value.length > 500) throw new Error("Expected bounded text.");
+    if (typeof value !== "string" || value.length > 500) throw invalidQuery("INVALID_TEXT", `Field ${label(path.path)} requires text of at most 500 characters.`, "Supply a JSON string within the field limit.");
     return value;
 }
 
@@ -78,23 +100,23 @@ export function validateFilter(filter, collection, depth = 0) {
         depth > 3 ||
         Object.keys(filter).length > 15
     )
-        throw new Error("Invalid or excessive query filter.");
+        throw invalidQuery("INVALID_FILTER", "Invalid or excessive query filter.", "Use an object with at most 15 keys per level and nesting depth at most 3.");
 
     const result = {};
     const allowed = fields[collection].split(" ");
     for (const [field, condition] of Object.entries(filter)) {
         if (["$and", "$or"].includes(field)) {
             if (!Array.isArray(condition) || !condition.length || condition.length > 5)
-                throw new Error("Invalid logical filter.");
+                throw invalidQuery("INVALID_LOGICAL_FILTER", `Invalid logical filter ${label(field)}.`, "Use an array containing 1 to 5 filter objects.");
             result[field] = condition.map((entry) => validateFilter(entry, collection, depth + 1));
             continue;
         }
-        if (!allowed.includes(field)) throw new Error("Unsupported query field.");
+        if (!allowed.includes(field)) throw invalidQuery("UNSUPPORTED_FIELD", `Unsupported top-level field or operator ${label(field)}.`, field.startsWith("$") ? "Only $and and $or are top-level operators. Place comparison/search operators inside an allowed field condition." : `Use allowed fields for ${collection}: ${fields[collection]}.`);
         const path = collections[collection].schema.path(field);
 
         if (condition !== null && typeof condition === "object" && !Array.isArray(condition)) {
             const operators = Object.entries(condition);
-            if (!operators.length || operators.length > 4) throw new Error("Invalid comparison.");
+            if (!operators.length || operators.length > 4) throw invalidQuery("INVALID_COMPARISON", `Invalid comparison for field ${label(field)}.`, "Use 1 to 4 supported operators inside the field condition.");
             result[field] = {};
             for (const [operator, value] of operators) {
                 if (operator === "$contains") {
@@ -104,17 +126,17 @@ export function validateFilter(filter, collection, depth = 0) {
                         !value.length ||
                         value.length > 100
                     )
-                        throw new Error("Literal search requires bounded text.");
+                        throw invalidQuery("INVALID_TEXT_SEARCH", `Invalid $contains condition for field ${label(field)}.`, "Use $contains only inside a String field condition, with a nonempty string of at most 100 characters.");
                     result[field].$regex = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
                     result[field].$options = "i";
                 } else if (operator === "$in") {
                     if (!Array.isArray(value) || !value.length || value.length > 10)
-                        throw new Error("Invalid membership filter.");
+                        throw invalidQuery("INVALID_MEMBERSHIP", `Invalid $in condition for field ${label(field)}.`, "Supply an array of 1 to 10 values matching the field type.");
                     result[field][operator] = value.map((item) => validateValue(item, path));
                 } else if (["$eq", "$ne", "$gt", "$gte", "$lt", "$lte"].includes(operator)) {
                     result[field][operator] = validateValue(value, path);
                 } else {
-                    throw new Error("Unsupported query operator.");
+                    throw invalidQuery("UNSUPPORTED_OPERATOR", `Unsupported operator ${label(operator)} for field ${label(field)}.`, "Supported field operators: $eq, $ne, $gt, $gte, $lt, $lte, $in, $contains. Use $contains for literal text search; arbitrary regex is not allowed.");
                 }
             }
         } else {
@@ -125,17 +147,28 @@ export function validateFilter(filter, collection, depth = 0) {
 }
 
 export function validateQuery(input) {
-    const query = querySchema.parse(input);
+    const parsed = querySchema.safeParse(input);
+    if (!parsed.success) {
+        const issue = parsed.error.issues[0];
+        throw invalidQuery("INVALID_QUERY_ARGUMENTS", `Invalid query argument ${label(issue.path.join(".") || "query")}: ${issue.message}`, "Follow the advertised query schema: filter is JSON text, limit is 1 to 20, projection uses allowed fields, and sort direction is asc or desc.");
+    }
+    const query = parsed.data;
     const allowed = fields[query.collection].split(" ");
     const projection = query.projection ?? allowed;
     if (!projection.length || projection.some((field) => !allowed.includes(field)))
-        throw new Error("Unsupported projection field.");
+        throw invalidQuery("INVALID_PROJECTION", "Unsupported or empty projection.", `Choose at least one allowed field for ${query.collection}: ${fields[query.collection]}.`);
     if (query.sort && !allowed.includes(query.sort.field))
-        throw new Error("Unsupported sort field.");
+        throw invalidQuery("INVALID_SORT", `Unsupported sort field ${label(query.sort.field)}.`, `Choose an allowed field for ${query.collection}: ${fields[query.collection]}.`);
 
+    let filter;
+    try {
+        filter = JSON.parse(query.filter);
+    } catch {
+        throw invalidQuery("INVALID_JSON", "Filter is not valid JSON.", "Provide a JSON object encoded as text, with double-quoted keys and string values.");
+    }
     return {
         ...query,
-        filter: validateFilter(JSON.parse(query.filter), query.collection),
+        filter: validateFilter(filter, query.collection),
         projection,
     };
 }
@@ -162,12 +195,7 @@ export function createDbTool(account, options = {}) {
             try {
                 query = validateQuery(input);
             } catch (error) {
-                return JSON.stringify({
-                    success: false,
-                    observation: error.message.startsWith("Record IDs must")
-                        ? error.message
-                        : 'Invalid read query. Check allowed fields, operators, types and limits. Clock filter: {"key":"mockNow"}. Exact sports are lowercase: cricket, football, tennis, badminton.',
-                });
+                return JSON.stringify(queryErrorObservation(error));
             }
 
             const scope =
@@ -203,6 +231,8 @@ export function createDbTool(account, options = {}) {
             } catch {
                 return JSON.stringify({
                     success: false,
+                    errorCode: "DATABASE_READ_UNAVAILABLE",
+                    message: "Database read unavailable; the underlying cause is unknown.",
                     observation: "Database read unavailable. No site records were changed.",
                 });
             }
