@@ -43,6 +43,7 @@ export function createControlTools(options = {}) {
                     question: z.string().trim().min(1).max(1500),
                     choices: z.array(z.string().trim().min(1).max(300)).max(8).optional(),
                     revision: z.object({
+                        quantity: z.number().int().positive().optional(),
                         reason: z.string().trim().min(1).max(500),
                         acceptChoice: z.string().trim().min(1).max(300),
                         changes: z.array(z.object({

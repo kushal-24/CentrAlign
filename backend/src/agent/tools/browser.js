@@ -295,6 +295,8 @@ export function createBrowserTools(manager, taskId, options = {}) {
                 session.approvedClick = approved;
                 actionStarted = true;
                 await handle.click();
+                // Let the submission's navigation finish before snapshotting and verifying.
+                if (approved) await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {});
             } else if (name === "browser_back") {
                 await page.goBack({ waitUntil: "domcontentloaded" });
                 if (page.url() !== "about:blank") allowedUrl(page.url(), session.siteUrl);
@@ -337,7 +339,9 @@ export function createBrowserTools(manager, taskId, options = {}) {
             return {
                 success: false,
                 actionStopped: Boolean(error.actionStopped) || actionStarted,
-                browserFailure: browserFailure(error, session, name),
+                ...(error.bookingConflict ? { bookingConflict: error.bookingConflict } : {}),
+                browserFailure: error.preflightValidation ? null : browserFailure(error, session, name),
+                ...(error.preflightValidation ? { preflightValidation: true } : {}),
                 observation: actionStarted
                     ? "Click outcome may be uncertain. Inspect a fresh snapshot before any further action; do not repeat the submission."
                     : session?.navigationFailure?.message ?? error.message,

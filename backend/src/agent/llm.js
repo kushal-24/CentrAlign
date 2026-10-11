@@ -1,5 +1,6 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatGroq } from "@langchain/groq";
+import { appendFileSync } from "node:fs";
 import { z } from "zod";
 import { readConfig } from "../config.js";
 
@@ -122,6 +123,52 @@ export function createRateLimiter({
     };
 }
 
+// Opt-in token accounting: set LLM_USAGE_LOG=<file> to append one JSON line per provider request
+// (and per failed request, with rate-limit headers) and echo it to stderr. Never logs prompts.
+function usageLogger(attempt) {
+    const file = process.env.LLM_USAGE_LOG;
+    if (!file) return undefined;
+    const write = (entry) => {
+        const line = JSON.stringify({ at: new Date().toISOString(), pid: process.pid, attempt, ...entry });
+        process.stderr.write(`[llm-usage] ${line}\n`);
+        try {
+            appendFileSync(file, `${line}\n`);
+        } catch {
+            // Logging must never break a run.
+        }
+    };
+    return [
+        {
+            handleLLMEnd(output) {
+                const message = output.generations?.[0]?.[0]?.message;
+                const meta = message?.usage_metadata;
+                const legacy = output.llmOutput?.tokenUsage;
+                write({
+                    ok: true,
+                    inputTokens: meta?.input_tokens ?? legacy?.promptTokens ?? null,
+                    outputTokens: meta?.output_tokens ?? legacy?.completionTokens ?? null,
+                    totalTokens: meta?.total_tokens ?? legacy?.totalTokens ?? null,
+                });
+            },
+            handleLLMError(error) {
+                const headers = error?.headers;
+                const read = (name) =>
+                    typeof headers?.get === "function" ? headers.get(name) : headers?.[name];
+                write({
+                    ok: false,
+                    status: error?.status ?? null,
+                    retryAfter: read("retry-after") ?? null,
+                    limitTokens: read("x-ratelimit-limit-tokens") ?? null,
+                    remainingTokens: read("x-ratelimit-remaining-tokens") ?? null,
+                    resetTokens: read("x-ratelimit-reset-tokens") ?? null,
+                    remainingRequests: read("x-ratelimit-remaining-requests") ?? null,
+                    message: String(error?.error?.error?.message ?? error?.message ?? "").slice(0, 300),
+                });
+            },
+        },
+    ];
+}
+
 export async function invokeModel(model, input, options = {}) {
     const attempts = Math.min(options.attempts ?? 4, 4);
     const delay =
@@ -147,7 +194,7 @@ export async function invokeModel(model, input, options = {}) {
             }
             const timeout = AbortSignal.timeout(options.timeout ?? 30000);
             const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
-            return await model.invoke(input, { signal });
+            return await model.invoke(input, { signal, callbacks: usageLogger(attempt) });
         } catch (error) {
             if (
                 options.signal?.aborted ||

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>MatchPilot — High-level system architecture</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+html,body{margin:0;height:100%;background:#0d1220}
+body{display:flex;align-items:center;justify-content:center}
+svg{width:100vw;height:100vh;max-width:calc(100vh*16/9);max-height:calc(100vw*9/16)}
+text{font-family:-apple-system,"Segoe UI",Inter,Arial,sans-serif;fill:#e8eefc}
+.box{fill:#161d30;stroke-width:2.5}
+.t{font-size:25px;font-weight:700}
+.s{font-size:19px;fill:#a9b6d0}
+.tag{font-size:16px;font-weight:600;letter-spacing:.3px}
+.edge{stroke:#c3cee6;stroke-width:3.5;fill:none}
+.fb{stroke:#fbbf24;stroke-width:3.5;fill:none;stroke-dasharray:10 7}
+.ap{stroke:#f472b6;stroke-width:2.5;fill:none;stroke-dasharray:4 5}
+.lg{font-size:18px;fill:#8fa3c0}
+</style></head><body>
+<svg viewBox="0 0 1920 1080" role="img" aria-label="MatchPilot high-level system architecture">
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" refX="12" refY="7.0" orient="auto"><path d="M0 0 L13 7.0 L0 14Z" fill="#c3cee6"/></marker><marker id="f" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" refX="12" refY="7.0" orient="auto"><path d="M0 0 L13 7.0 L0 14Z" fill="#fbbf24"/></marker><marker id="p" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="10" refY="6.0" orient="auto"><path d="M0 0 L11 6.0 L0 12Z" fill="#f472b6"/></marker></defs>
+<rect width="1920" height="1080" fill="#0d1220"/>
+<text x="960" y="130" text-anchor="middle" style="font-size:68px;font-weight:800">MatchPilot</text>
+<text x="960" y="185" text-anchor="middle" style="font-size:30px;fill:#8fa3c0">High-level system architecture</text>
+
+<rect x="616" y="250" width="380" height="60" rx="30" fill="none" stroke="#f472b6" stroke-width="2" stroke-dasharray="6 5"/>
+<g transform="translate(648,282)" style="color:#f472b6"><circle cx="0" cy="-7" r="6" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M-11 9 a11 9 0 0 1 22 0" fill="none" stroke="currentColor" stroke-width="2.5"/></g>
+<text x="820" y="287" text-anchor="middle" style="font-size:19px;fill:#f9a8d4">Human approval for sensitive actions</text>
+<line x1="806" y1="312" x2="806" y2="396" class="ap" marker-end="url(#p)"/>
+
+<rect x="59" y="400" width="262" height="240" rx="18" class="box" stroke="#8fa3c0"/>
+<g transform="translate(190,452)" style="color:#8fa3c0"><rect x="-22" y="-16" width="44" height="32" rx="6" fill="none" stroke="currentColor" stroke-width="3"/><path d="M-12 -4 H12 M-12 4 H4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></g>
+<text x="190" y="512" class="t" text-anchor="middle">Postman</text>
+<text x="190" y="544" class="s" text-anchor="middle">Client</text>
+<rect x="367" y="400" width="262" height="240" rx="18" class="box" stroke="#69b8ed"/>
+<g transform="translate(498,452)" style="color:#69b8ed"><path d="M-20 -14 L-26 0 L-20 14 M20 -14 L26 0 L20 14 M6 -16 L-6 16" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="498" y="512" class="t" text-anchor="middle">Express API</text>
+<text x="498" y="544" class="s" text-anchor="middle">Task submission ·</text>
+<text x="498" y="568" class="s" text-anchor="middle">Approval · Follow-ups ·</text>
+<text x="498" y="592" class="s" text-anchor="middle">Trace</text>
+<rect x="675" y="400" width="262" height="240" rx="18" class="box" stroke="#a78bfa"/>
+<g transform="translate(806,452)" style="color:#a78bfa"><circle cx="0" cy="0" r="7" fill="currentColor"/><circle cx="-22" cy="-12" r="4.5" fill="currentColor"/><circle cx="22" cy="-12" r="4.5" fill="currentColor"/><circle cx="0" cy="20" r="4.5" fill="currentColor"/><path d="M-18 -10 L-6 -3 M18 -10 L6 -3 M0 7 V16" stroke="currentColor" stroke-width="2.5"/></g>
+<text x="806" y="512" class="t" text-anchor="middle">MatchPilot Agent</text>
+<text x="806" y="540" class="tag" text-anchor="middle" fill="#a78bfa">LangGraph + LangChain</text>
+<text x="806" y="572" class="s" text-anchor="middle">Understand · Plan ·</text>
+<text x="806" y="596" class="s" text-anchor="middle">Select tools · Execute ·</text>
+<text x="806" y="620" class="s" text-anchor="middle">Verify</text>
+<rect x="983" y="400" width="262" height="240" rx="18" class="box" stroke="#4ade80"/>
+<g transform="translate(1114,452)" style="color:#4ade80"><rect x="-24" y="-17" width="48" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="3"/><path d="M-24 -6 H24" stroke="currentColor" stroke-width="3"/><circle cx="-16" cy="-11.5" r="1.8" fill="currentColor"/><circle cx="-9" cy="-11.5" r="1.8" fill="currentColor"/></g>
+<text x="1114" y="512" class="t" text-anchor="middle">Playwright /</text>
+<text x="1114" y="540" class="t" text-anchor="middle">Chromium</text>
+<text x="1114" y="572" class="s" text-anchor="middle">Real browser</text>
+<text x="1114" y="596" class="s" text-anchor="middle">interactions</text>
+<rect x="1291" y="400" width="262" height="240" rx="18" class="box" stroke="#fbbf24"/>
+<g transform="translate(1422,452)" style="color:#fbbf24"><path d="M-24 -10 H24 V-3 a5 5 0 0 0 0 10 V10 H-24 V3 a5 5 0 0 0 0 -10 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M8 -10 V10" stroke="currentColor" stroke-width="2.5" stroke-dasharray="3 3"/></g>
+<text x="1422" y="512" class="t" text-anchor="middle">MatchHub</text>
+<text x="1422" y="540" class="t" text-anchor="middle">Application</text>
+<text x="1422" y="572" class="s" text-anchor="middle">Sports events ·</text>
+<text x="1422" y="596" class="s" text-anchor="middle">Ticket booking</text>
+<rect x="1599" y="400" width="262" height="240" rx="18" class="box" stroke="#2dd4bf"/>
+<g transform="translate(1730,452)" style="color:#2dd4bf"><ellipse cx="0" cy="-12" rx="18" ry="6" fill="none" stroke="currentColor" stroke-width="3"/><path d="M-18 -12 V10 a18 6 0 0 0 36 0 V-12" fill="none" stroke="currentColor" stroke-width="3"/><path d="M-8 0 L-2 6 L9 -6" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="1730" y="512" class="t" text-anchor="middle">Verified Result</text>
+<text x="1730" y="544" class="s" text-anchor="middle">Outcome checked</text>
+<text x="1730" y="568" class="s" text-anchor="middle">against MongoDB</text>
+<line x1="325" y1="520" x2="363" y2="520" class="edge" marker-end="url(#a)"/>
+<line x1="633" y1="520" x2="671" y2="520" class="edge" marker-end="url(#a)"/>
+<line x1="941" y1="520" x2="979" y2="520" class="edge" marker-end="url(#a)"/>
+<line x1="1249" y1="520" x2="1287" y2="520" class="edge" marker-end="url(#a)"/>
+<line x1="1557" y1="520" x2="1595" y2="520" class="edge" marker-end="url(#a)"/>
+<path d="M1114 644 V700 Q1114 725 1089 725 H831 Q806 725 806 700 V652" class="fb" marker-end="url(#f)"/>
+<text x="960" y="775" text-anchor="middle" style="font-size:25px;font-weight:600;fill:#fbbf24">Observe results and adapt</text>
+
+<g transform="translate(60,990)">
+<line x1="0" y1="0" x2="50" y2="0" class="edge" style="stroke-width:3"/><text x="64" y="6" class="lg">Task flow</text>
+<line x1="190" y1="0" x2="240" y2="0" class="fb" style="stroke-width:3"/><text x="254" y="6" class="lg">Feedback</text>
+<line x1="370" y1="0" x2="420" y2="0" class="ap" style="stroke-width:3"/><text x="434" y="6" class="lg">Approval checkpoint</text>
+</g>
+</svg></body></html>

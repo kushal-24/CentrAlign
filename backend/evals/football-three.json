@@ -1,0 +1,39 @@
+[
+  {
+    "id": "book-three-cityside-westfield",
+    "category": "booking",
+    "task": "Book exactly 3 tickets for the football match Cityside vs Westfield at Pacific Stadium in Tokyo. Use attendee Kush, email {{studentEmail}}, phone +919000000001. Ask for approval before submitting.",
+    "demo": false,
+    "timeoutMs": 600000,
+    "answers": [],
+    "approvals": [
+      {
+        "approved": true,
+        "action": {
+          "kind": "book",
+          "matchId": "20000000000000000000000a",
+          "title": "Cityside vs Westfield",
+          "quantity": 3,
+          "total": 1950,
+          "ownerName": "Kush",
+          "ownerEmail": "{{studentEmail}}"
+        }
+      }
+    ],
+    "expected": {
+      "status": "done",
+      "unchanged": false,
+      "summaryPatterns": [],
+      "recordAssertions": [],
+      "action": {
+        "kind": "book",
+        "matchId": "20000000000000000000000a",
+        "title": "Cityside vs Westfield",
+        "quantity": 3,
+        "total": 1950,
+        "ownerName": "Kush",
+        "ownerEmail": "{{studentEmail}}"
+      }
+    }
+  }
+]

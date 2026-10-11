@@ -31,5 +31,6 @@ export function createTaskTools(manager, taskId, account, task = "") {
     const byName = new Map(tools.map((entry) => [entry.name, entry]));
 
     return { tools, byName, cancellationWorkflow, verifyActions: verifier.verifyActions,
+        setBookingRequirements: verifier.setBookingRequirements,
         verifyExistingCancellation: verifier.verifyExistingCancellation };
 }

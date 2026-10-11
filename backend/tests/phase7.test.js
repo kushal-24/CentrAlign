@@ -10,6 +10,7 @@ import { selectAgentTools, compactReadEvidence } from "../src/agent/context.js";
 import { getUnderstandPrompt } from "../src/agent/prompt.js";
 import { runTool } from "../src/agent/nodes/tools.js";
 import { createInitialState } from "../src/agent/state.js";
+import { approveClick } from "../src/agent/tools/riskGate.js";
 import { createControlTools } from "../src/agent/tools/control.js";
 import { createScriptedModel } from "./helpers/phase6-model.js";
 import { checkAction, cancellationDetails, checkExistingCancellation, createActionVerifier, describeAction } from "../src/agent/verification.js";
@@ -951,4 +952,65 @@ test("verified new cancellation ignores an erroneous alreadySatisfied completion
         assert.equal(update.finishSummary, "Cancelled booking; refund INR 1000.");
         assert.equal(update.verification, undefined);
     }
+});
+
+
+test("booking preflight blocks existing active bookings before asking for approval", async () => {
+    const world = bookingWorld().after;
+    const verifier = createActionVerifier(account, { readState: async () => structuredClone(world) });
+    const details = { method: "post", destination: `http://localhost:4000/matches/${world.matches[0]._id}/book`,
+        values: [["quantity", "3"], ["ownerName", "Another attendee"], ["ownerEmail", "other@example.com"]] };
+    await assert.rejects(verifier.capture(randomUUID(), details), (error) =>
+        error.actionStopped && error.bookingConflict.bookingCode === "MD-TEST" &&
+        error.message.includes("No new booking was submitted"));
+    world.bookings[0].status = "cancelled";
+    assert.equal((await verifier.capture(randomUUID(), details)).kind, "book");
+});
+
+test("booking preflight rechecks for a booking created while approval was pending", async () => {
+    const { before, after } = bookingWorld();
+    let world = before;
+    const verifier = createActionVerifier(account, { readState: async () => structuredClone(world) });
+    const proposalId = randomUUID();
+    await verifier.capture(proposalId, { method: "post",
+        destination: `http://localhost:4000/matches/${before.matches[0]._id}/book`,
+        values: [["quantity", "2"], ["ownerName", "Student"], ["ownerEmail", account.email]] });
+    world = after;
+    await assert.rejects(verifier.approve(proposalId), (error) =>
+        error.actionStopped && error.bookingConflict.bookingCode === "MD-TEST");
+    assert.equal((await verifier.verifyActions()).success, false);
+});
+
+
+test("approval cannot pause or capture an invalid required-checkbox form", async () => {
+    let captured = false;
+    const details = { risk: "irreversible", destination: "http://localhost:4000/bookings/test/cancel",
+        method: "post", values: [], disabled: false,
+        invalidFields: [{ name: "confirm", label: "Cancellation confirmation", message: "Check this box." }] };
+    const handle = { evaluate: async (_fn, ref) => ref === 1 ? true : details };
+    const session = { taskId: "invalid", siteUrl: "http://localhost:4000", epoch: 1,
+        refs: new Map([[1, { epoch: 1, handle }]]), pending: null };
+    await assert.rejects(approveClick(session, 1, { capture: async () => { captured = true; } }),
+        (error) => error.preflightValidation && error.message.includes("Check this box"));
+    assert.equal(session.pending, null);
+    assert.equal(captured, false);
+});
+
+test("booking approval enforces requested quantity and explicit accepted revisions", async () => {
+    const world = bookingWorld().before;
+    const task = "Book 3 tickets for ODI";
+    const verifier = createActionVerifier(account, { task, readState: async () => structuredClone(world) });
+    const details = { method: "post", destination: `http://localhost:4000/matches/${world.matches[0]._id}/book`,
+        values: [["quantity", "1"], ["ownerName", "Student"], ["ownerEmail", account.email]] };
+    await assert.rejects(verifier.capture(randomUUID(), details), (error) =>
+        error.preflightValidation && error.message.includes("agreed quantity is 3"));
+    details.values[0][1] = "3";
+    assert.equal((await verifier.capture(randomUUID(), details)).quantity, 3);
+    verifier.setBookingRequirements({ task, clarifications: [{ accepted: false,
+        revision: { quantity: 2, changes: [{ replacement: "Book 2 tickets" }] } }] });
+    details.values[0][1] = "2";
+    await assert.rejects(verifier.capture(randomUUID(), details), (error) => error.preflightValidation);
+    verifier.setBookingRequirements({ task, clarifications: [{ accepted: true,
+        revision: { quantity: 2, changes: [{ replacement: "Book 2 tickets" }] } }] });
+    assert.equal((await verifier.capture(randomUUID(), details)).quantity, 2);
 });

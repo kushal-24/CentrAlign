@@ -54,6 +54,8 @@ export function guard(state, context) {
     )
         failure =
             "Action stopped after rejection, changed approval or uncertain submission. Inspect state before starting a new task.";
+    if (state.lastObservation?.bookingConflict)
+        failure = state.lastObservation.observation;
 
     if (state.finishSummary && !failure) {
         if (state.taskKind === "read" && !state.evidenceCount)

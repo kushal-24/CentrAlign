@@ -31,6 +31,14 @@ export async function inspectAction(session, ref) {
                 : form?.action || element.href || location.href,
             method: element.hasAttribute("formmethod") ? element.formMethod : form?.method || "get",
             values,
+            disabled: Boolean(element.disabled),
+            invalidFields: form ? Array.from(form.elements)
+                .filter((field) => field.willValidate && !field.validity.valid)
+                .map((field) => ({
+                    name: field.name || field.id || "unnamed field",
+                    label: clean(field.labels?.[0]?.innerText || field.getAttribute("aria-label") || field.name),
+                    message: field.validationMessage,
+                })) : [],
             visibleDetails: clean(
                 (document.querySelector("main") ?? document.body).innerText,
             ).slice(0, 14000),
@@ -56,6 +64,13 @@ export async function approveClick(session, ref, verifier) {
     }
     if (action.details.risk !== "irreversible" && !session.pending) {
         return false;
+    }
+
+    if (!session.pending && (action.details.disabled || action.details.invalidFields?.length)) {
+        const problems = action.details.invalidFields.map((field) => `${field.label}: ${field.message}`);
+        if (action.details.disabled) problems.push("Submit control is disabled.");
+        throw Object.assign(new Error(`Approval blocked. Correct the form first: ${problems.join("; ")}`),
+            { preflightValidation: true });
     }
 
     if (!session.pending) {

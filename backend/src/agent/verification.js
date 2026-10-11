@@ -6,6 +6,25 @@ function same(left, right) {
     return JSON.stringify(left) === JSON.stringify(right);
 }
 
+export function requestedTicketQuantity(text) {
+    const words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+    const pattern = /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+tickets?\b/gi;
+    const quantities = [...text.matchAll(pattern)].map((match) =>
+        /^\d+$/.test(match[1]) ? Number(match[1]) : words.indexOf(match[1].toLowerCase()));
+    const unique = [...new Set(quantities)];
+    return unique.length === 1 && Number.isSafeInteger(unique[0]) && unique[0] > 0 ? unique[0] : null;
+}
+
+function assertNoActiveBooking(state, action, account) {
+    if (action.kind !== "book") return;
+    const existing = state.bookings.find((row) => row.userId === account.userId &&
+        row.matchId === action.matchId && row.status === "booked");
+    if (existing)
+        throw Object.assign(new Error(
+            `You already have an active booking for ${action.title} (${existing.code}). No new booking was submitted.`,
+        ), { actionStopped: true, bookingConflict: { bookingCode: existing.code, matchId: action.matchId } });
+}
+
 export async function readActionState(account) {
     const [user, clock, matches, bookings, waitlist, outbox] = await Promise.all([
         User.findById(account.userId).select("_id name email phone").lean(),
@@ -244,6 +263,22 @@ export function checkAction(before, after, action, account) {
 export function createActionVerifier(account, options = {}) {
     const readState = options.readState ?? (() => readActionState(account));
     const actions = new Map();
+    let bookingQuantity = requestedTicketQuantity(options.task ?? "");
+
+    function setBookingRequirements(state) {
+        bookingQuantity = requestedTicketQuantity(state.task ?? "");
+        for (const entry of state.clarifications ?? []) {
+            if (entry.accepted && entry.revision) {
+                const quantity = entry.revision.quantity ?? requestedTicketQuantity(
+                    entry.revision.changes.map((change) => change.replacement).join(" "),
+                );
+                if (quantity) bookingQuantity = quantity;
+            } else if (!bookingQuantity && /how many|ticket quantity|number of tickets/i.test(entry.question)) {
+                bookingQuantity = requestedTicketQuantity(entry.answer) ??
+                    requestedTicketQuantity(`${entry.answer.trim()} tickets`);
+            }
+        }
+    }
     let resolvedCancellation = null;
     let chosenCode = null;
 
@@ -271,6 +306,13 @@ export function createActionVerifier(account, options = {}) {
                 );
             const before = await readState();
             const action = describeAction(details, before);
+            if (action.kind === "book" && options.task &&
+                (!bookingQuantity || action.quantity !== bookingQuantity))
+                throw Object.assign(new Error(bookingQuantity
+                    ? `Approval blocked: the agreed quantity is ${bookingQuantity} tickets but the form contains ${action.quantity}. Fill the correct quantity before requesting approval.`
+                    : "Approval blocked: ticket quantity is unclear. Ask the user how many tickets they want before requesting approval."),
+                { preflightValidation: true });
+            assertNoActiveBooking(before, action, account);
             if (action.kind === "cancel" && options.task && /\bcancel\b/i.test(options.task)) {
                 if (resolvedCancellation?.status !== "ready" ||
                     !before.bookings.some((row) => row._id === action.bookingId && row.status === "booked") ||
@@ -295,7 +337,9 @@ export function createActionVerifier(account, options = {}) {
 
     async function approve(proposalId) {
         const entry = actions.get(proposalId);
-        if (!entry || !same(entry.before, await readState()))
+        const current = await readState();
+        if (entry) assertNoActiveBooking(current, entry.action, account);
+        if (!entry || !same(entry.before, current))
             throw new Error(
                 "Action proposal changed in the database. Start with fresh details and approval.",
             );
@@ -346,7 +390,7 @@ export function createActionVerifier(account, options = {}) {
     }
 
     return { capture, approve, verifyActions, verifyExistingCancellation, prepareCancellation,
-        acceptCancellationChoice, getCancellationQuote: () => resolvedCancellation };
+        acceptCancellationChoice, getCancellationQuote: () => resolvedCancellation, setBookingRequirements };
 }
 
 export function cancellationDetails(state, selection, account) {

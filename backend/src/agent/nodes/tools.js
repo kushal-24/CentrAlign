@@ -50,6 +50,7 @@ export async function runTool(state, context) {
     let observation;
 
     try {
+        context.registry.setBookingRequirements?.(state);
         if (call.name === "ask_human" && call.args.revision) {
             const changes = call.args.revision.changes;
             if (state.hasAction || !Array.isArray(changes) ||
