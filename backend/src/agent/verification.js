@@ -1,4 +1,6 @@
 import { Booking, Match, Waitlist, Outbox, User, Config } from "../site/models/index.js";
+import fuzzysort from "fuzzysort";
+import { getRefundAmount } from "../site/lib/clock.js";
 
 function same(left, right) {
     return JSON.stringify(left) === JSON.stringify(right);
@@ -242,6 +244,24 @@ export function checkAction(before, after, action, account) {
 export function createActionVerifier(account, options = {}) {
     const readState = options.readState ?? (() => readActionState(account));
     const actions = new Map();
+    let resolvedCancellation = null;
+    let chosenCode = null;
+
+    async function prepareCancellation(selection) {
+        if (options.task && selection.bookingCode &&
+            !(options.task.match(/\bMD-[A-Z0-9]+\b/gi) ?? []).some((code) =>
+                code.toUpperCase() === selection.bookingCode.toUpperCase()) &&
+            chosenCode !== selection.bookingCode)
+            throw new Error("Search by event first. A discovered booking code requires the user's choice when ambiguous.");
+        resolvedCancellation = cancellationDetails(await readState(), selection, account);
+        return resolvedCancellation;
+    }
+
+    function acceptCancellationChoice(answer, choices = []) {
+        if (resolvedCancellation?.status === "ambiguous" && choices.includes(answer) &&
+            resolvedCancellation.candidates.some((row) => row.bookingCode === answer))
+            chosenCode = answer;
+    }
 
     async function capture(proposalId, details) {
         if (!actions.has(proposalId)) {
@@ -251,6 +271,14 @@ export function createActionVerifier(account, options = {}) {
                 );
             const before = await readState();
             const action = describeAction(details, before);
+            if (action.kind === "cancel" && options.task && /\bcancel\b/i.test(options.task)) {
+                if (resolvedCancellation?.status !== "ready" ||
+                    !before.bookings.some((row) => row._id === action.bookingId && row.status === "booked") ||
+                    action.bookingId !== resolvedCancellation.bookingId ||
+                    action.matchId !== resolvedCancellation.matchId ||
+                    action.refund !== resolvedCancellation.refund || before.now !== resolvedCancellation.siteTime)
+                    throw new Error("Resolve the intended active booking and current refund before requesting approval.");
+            }
             if (action.kind === "waitlist")
                 action.expectedPosition =
                     (await (
@@ -298,5 +326,117 @@ export function createActionVerifier(account, options = {}) {
         };
     }
 
-    return { capture, approve, verifyActions };
+    async function verifyExistingCancellation(task, bookingCode) {
+        const state = await readState();
+        let resolution = resolvedCancellation;
+        if (!resolution) {
+            const codes = task.match(/\bMD-[A-Z0-9]+\b/gi) ?? [];
+            if (codes.length === 1)
+                resolution = cancellationDetails(state, { bookingCode: codes[0] }, account);
+        }
+        // Re-resolve the original search so a newly active booking cannot be hidden by an old cancellation.
+        if (resolution?.status === "already_cancelled") {
+            const refreshed = cancellationDetails(state, resolution.explicitBookingCode
+                ? { bookingCode: resolution.bookingCode }
+                : { eventSearch: resolution.eventSearch }, account);
+            if (refreshed.status !== "already_cancelled" || refreshed.bookingId !== resolution.bookingId)
+                resolution = null;
+        }
+        return checkExistingCancellation(state, task, bookingCode, account, resolution);
+    }
+
+    return { capture, approve, verifyActions, verifyExistingCancellation, prepareCancellation,
+        acceptCancellationChoice, getCancellationQuote: () => resolvedCancellation };
+}
+
+export function cancellationDetails(state, selection, account) {
+    const normalize = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const owned = state.bookings.filter((row) => row.userId === account.userId);
+    let events;
+    let uncertainEvent = false;
+    if (selection.bookingCode) {
+        const booking = owned.find((row) => row.code.toUpperCase() === selection.bookingCode.toUpperCase());
+        events = state.matches.filter((row) => row._id === booking?.matchId);
+    } else {
+        const query = normalize(selection.eventSearch ?? "");
+        if (!query) return { status: "not_found", candidates: [] };
+        const searchable = state.matches.filter((event) => owned.some((row) => row.matchId === event._id))
+            .map((event) => ({ ...event, searchTitle: normalize(event.title) }));
+        const ranked = fuzzysort.go(query, searchable, { key: "searchTitle", threshold: 0.5 });
+        uncertainEvent = ranked.length > 0 && ranked[0].score < 0.7;
+        events = ranked.filter((result) => result.score >= ranked[0].score - 0.12).map((result) => result.obj);
+    }
+    const candidates = events.flatMap((event) => {
+        const rows = owned.filter((row) => row.matchId === event._id &&
+            (!selection.bookingCode || row.code.toUpperCase() === selection.bookingCode.toUpperCase()));
+        const active = rows.filter((row) => row.status === "booked");
+        return (active.length ? active : rows.filter((row) => row.status === "cancelled"))
+            .map((row) => ({ bookingId: row._id, bookingCode: row.code, matchId: event._id,
+                title: event.title, quantity: row.quantity, status: row.status }));
+    });
+    if (candidates.length !== 1 || uncertainEvent)
+        return { status: candidates.length ? "ambiguous" : "not_found", candidates,
+            eventSearch: selection.eventSearch };
+    const target = candidates[0];
+    const booking = owned.find((row) => row._id === target.bookingId);
+    const match = events.find((event) => event._id === target.matchId);
+    const now = new Date(state.now);
+    const startsAt = new Date(match.startsAt);
+    if (!Number.isFinite(now.getTime()) || !Number.isFinite(startsAt.getTime()) ||
+        !(match.refundFullHoursBefore === null ||
+            Number.isFinite(match.refundFullHoursBefore) && match.refundFullHoursBefore >= 0))
+        throw new Error("Refund calculation requires valid site time and policy.");
+    return { ...target, status: booking.status === "booked" ? "ready" : "already_cancelled",
+        eventSearch: selection.eventSearch, explicitBookingCode: Boolean(selection.bookingCode),
+        siteTime: state.now, currency: "INR", totalPaid: booking.totalPrice,
+        refund: getRefundAmount({ ...match, startsAt }, booking, now), policy: match.policyText };
+}
+
+export function checkExistingCancellation(state, task, bookingCode, account, resolution) {
+    const checks = [];
+    const check = (name, passed) => checks.push({ name, passed: Boolean(passed) });
+    const bookings = state.bookings.filter((row) => row.code === bookingCode && row.userId === account.userId);
+    const booking = bookings[0];
+    const match = state.matches.find((row) => row._id === booking?.matchId);
+    const receipt = state.outbox.find((row) => row.relatedBookingId === booking?._id &&
+        row.type === "cancellation" && row.to === account.email &&
+        row.body.includes(`Refund INR ${booking?.refundAmount}`));
+    const now = new Date(state.now).getTime();
+    const cancelledAt = new Date(booking?.cancelledAt ?? "").getTime();
+    const start = new Date(match?.startsAt ?? "").getTime();
+    const hours = match?.refundFullHoursBefore;
+    const validPolicy = hours === null || (Number.isFinite(hours) && hours >= 0);
+    const refundAt = (time) => hours !== null && time <= start - hours * 3600000
+        ? booking?.totalPrice : 0;
+
+    const requestedCodes = task.match(/\bMD-[A-Z0-9]+\b/gi) ?? [];
+    const explicit = requestedCodes.length === 1 && requestedCodes[0].toUpperCase() === bookingCode.toUpperCase();
+    if (!resolution && explicit)
+        resolution = cancellationDetails(state, { bookingCode }, account);
+    check("explicit cancellation intent and resolved target", /\bcancel\b/i.test(task) &&
+        requestedCodes.length <= 1 && (!requestedCodes.length || explicit) &&
+        resolution?.status === "already_cancelled" && resolution.bookingCode === bookingCode);
+    check("resolved event and booking IDs match", match && resolution?.bookingId === booking?._id &&
+        resolution?.matchId === match._id);
+    check("one owned booking already cancelled", bookings.length === 1 && booking?.status === "cancelled");
+    check("valid site time, cancellation time and policy", Number.isFinite(now) &&
+        Number.isFinite(cancelledAt) && cancelledAt <= now && Number.isFinite(start) && validPolicy);
+    check("recorded refund matches cancellation-time policy", Number.isFinite(booking?.totalPrice) &&
+        booking.totalPrice >= 0 && booking?.refundAmount === refundAt(cancelledAt));
+    check("existing cancellation receipt confirms refund", receipt);
+
+    const success = checks.every((entry) => entry.passed);
+    return {
+        success,
+        checks,
+        actions: [],
+        outcome: "already_satisfied",
+        records: booking ? [booking] : [],
+        outbox: receipt ? [receipt] : [],
+        siteTime: state.now,
+        ...(success ? {
+            currentPolicyRefund: refundAt(now),
+            summary: `Booking ${booking.code} for ${match.title} was already cancelled. Recorded refund INR ${booking.refundAmount}, confirmed by its existing cancellation receipt. At site time ${state.now}, the policy would allow INR ${refundAt(now)} for an active booking. No new cancellation or refund was submitted.`,
+        } : {}),
+    };
 }

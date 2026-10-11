@@ -50,6 +50,13 @@ export async function runTool(state, context) {
     let observation;
 
     try {
+        if (call.name === "ask_human" && call.args.revision) {
+            const changes = call.args.revision.changes;
+            if (state.hasAction || !Array.isArray(changes) ||
+                new Set(changes.map((change) => change.previous)).size !== changes.length ||
+                changes.some((change) => !state.successCriteria.includes(change.previous)))
+                throw new Error("Invalid or late requirement revision.");
+        }
         if (repeatsFailedCall(state, call)) {
             const message = "Unchanged failed tool call blocked; the tool was not executed.";
             const hint = "Correct the rejected arguments using the previous error feedback or choose a different supported approach. Do not repeat this call unchanged.";
@@ -89,9 +96,34 @@ export async function runTool(state, context) {
     const update = {
         lastObservation: observation,
     };
+    if (observation.cancellationQuote)
+        update.cancellationQuote = observation.cancellationQuote;
     if (observation.snapshot) {
         update.latestSnapshot = observation.snapshot;
         update.observationWindow = observation.observationWindow ?? {};
+    }
+    if (call.name === "db_query" && observation.success) {
+        const key = callKey(call);
+        const facts = compactObservation(observation, 1000);
+        const evidence = state.readEvidence ?? [];
+        const previous = evidence.find((entry) => entry.key === key);
+        const unchanged = previous && repeatKey("facts", previous.observation, null) ===
+            repeatKey("facts", facts, null);
+        update.unchangedReadCount = unchanged ? (state.unchangedReadCount ?? 0) + 1 : 0;
+        update.readEvidence = [...evidence.filter((entry) => entry.key !== key),
+            { key, args: call.args, observation: facts }].slice(-6);
+        if (update.unchangedReadCount >= 2)
+            update.warning = "Repeated reads returned no new evidence. Use retained facts to finish, or ask the user about a specific unresolved requirement. After three unchanged reads, only finish and ask_human are available.";
+        else if (state.warning?.startsWith("Repeated reads returned no new evidence."))
+            update.warning = null;
+    }
+    if (observation.approvedAction) {
+        update.readEvidence = [];
+        update.unchangedReadCount = 0;
+    } else if (observation.humanAnswer) {
+        update.unchangedReadCount = 0;
+        if (state.warning?.startsWith("Repeated reads returned no new evidence."))
+            update.warning = null;
     }
     update.actionHistory = [...(state.actionHistory ?? []), {
         tool: call.name,
@@ -107,8 +139,17 @@ export async function runTool(state, context) {
     if (observation.humanAnswer)
         update.clarifications = [
             ...(state.clarifications ?? []),
-            { question: observation.humanQuestion, answer: observation.humanAnswer },
+            { question: observation.humanQuestion, answer: observation.humanAnswer,
+                ...(observation.proposedRevision ? {
+                    revision: observation.proposedRevision,
+                    accepted: observation.revisionAccepted === true,
+                } : {}) },
         ].slice(-8);
+    if (call.name === "ask_human" && observation.success && observation.revisionAccepted) {
+        const changes = observation.proposedRevision.changes;
+        update.successCriteria = state.successCriteria.map((criterion) =>
+            changes.find((change) => change.previous === criterion)?.replacement ?? criterion);
+    }
     if (
         observation.success &&
         ["db_query", "browser_goto", "browser_snapshot", "browser_back"].includes(call.name)
@@ -125,16 +166,32 @@ export async function runTool(state, context) {
         }
     }
     if (call.name === "finish" && observation.success) {
-        if (state.hasAction) {
+        let verification = state.verification;
+        // A newly executed action uses its independent verification, even if the
+        // model mistakenly labels the final result as already satisfied.
+        if (observation.alreadySatisfied && !state.hasAction) {
+            if (!context.registry.verifyExistingCancellation) {
+                update.failure = "Existing cancellation verification is unavailable.";
+            } else {
+                verification = await context.registry.verifyExistingCancellation(
+                    state.task, observation.alreadySatisfied.bookingCode,
+                );
+                update.verification = verification;
+                if (!verification.success)
+                    update.failure = "Existing cancellation does not establish the requested outcome.";
+            }
+        }
+        if (state.hasAction || observation.alreadySatisfied) {
             const criteria = observation.criteria ?? [];
-            const supported = state.verification?.success &&
+            const supported = verification?.success && state.successCriteria.length > 0 &&
                 criteria.length === state.successCriteria.length &&
                 criteria.every((entry, index) => entry.met &&
                     entry.criterion === state.successCriteria[index]);
             if (!supported)
-                update.failure = "Verified action does not establish every requested success criterion.";
+                update.failure ??= "Verified action does not establish every requested success criterion.";
         }
-        update.finishSummary = observation.finish;
+        update.finishSummary = observation.alreadySatisfied && !state.hasAction && verification?.success
+            ? verification.summary : observation.finish;
     }
 
     update.errorCount = observation.success ? 0 : state.errorCount + 1;

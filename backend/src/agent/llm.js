@@ -3,16 +3,39 @@ import { ChatGroq } from "@langchain/groq";
 import { z } from "zod";
 import { readConfig } from "../config.js";
 
+let groqRequestIndex = 0;
+
+// Select at invocation time, including structured calls, tool calls and retries.
+// The shared counter alternates requests across tasks in this server process.
+function alternateGroqModels(models) {
+    return {
+        _llmType: () => "groq",
+        invoke(input, options) {
+            const selected = models[groqRequestIndex % models.length];
+            groqRequestIndex = (groqRequestIndex + 1) % models.length;
+            return selected.invoke(input, options);
+        },
+        bindTools(...args) {
+            return alternateGroqModels(models.map((model) => model.bindTools(...args)));
+        },
+        withStructuredOutput(...args) {
+            return alternateGroqModels(models.map((model) => model.withStructuredOutput(...args)));
+        },
+    };
+}
+
 export function createLLM() {
     const config = readConfig(process.env, { requireLLM: true });
     if (config.LLM_PROVIDER === "groq") {
-        return new ChatGroq({
-            apiKey: config.GROQ_API_KEY,
+        const keys = [...new Set([config.GROQ_API_KEY, config.GROQ_API_KEY_2].filter(Boolean))];
+        const models = keys.map((apiKey) => new ChatGroq({
+            apiKey,
             model: config.GROQ_MODEL,
             maxTokens: config.GROQ_MAX_OUTPUT_TOKENS,
             temperature: 0,
             maxRetries: 0,
-        });
+        }));
+        return models.length === 1 ? models[0] : alternateGroqModels(models);
     }
 
     return new ChatGoogleGenerativeAI({

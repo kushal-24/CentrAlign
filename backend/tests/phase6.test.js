@@ -611,3 +611,28 @@ test("Phase 6 understanding defaults a missing taskKind to action", async () => 
     const result = await understand({ task: "t" }, { model, modelOptions: {} });
     assert.equal(result.taskKind, "action");
 });
+
+
+test("provider Retry-After dates and long waits are respected within a bounded retry budget", async () => {
+    const { providerRetryDelayMs } = await import("../src/agent/llm.js");
+    assert.equal(providerRetryDelayMs({ headers: { "retry-after": "45" } }), 45000);
+    assert.equal(providerRetryDelayMs({ headers: { "retry-after": "Sat, 10 Oct 2026 08:31:00 GMT" } },
+        Date.parse("2026-10-10T08:30:00Z")), 60000);
+    assert.equal(providerRetryDelayMs({ headers: { "retry-after": "invalid" } }), 0);
+    const waits = [];
+    let calls = 0;
+    await assert.rejects(invokeModel({ invoke: async () => {
+        calls++;
+        throw Object.assign(new Error("rate limited"), { status: 429, headers: { "retry-after": "45" } });
+    } }, [], { delay: async (ms) => waits.push(ms) }));
+    assert.deepEqual(waits, [45000]);
+    assert.equal(calls, 2);
+    calls = 0;
+    waits.length = 0;
+    await assert.rejects(invokeModel({ invoke: async () => {
+        calls++;
+        throw Object.assign(new Error("rate limited"), { status: 429, headers: { "retry-after": "120" } });
+    } }, [], { delay: async (ms) => waits.push(ms) }));
+    assert.equal(calls, 1);
+    assert.deepEqual(waits, []);
+});

@@ -107,8 +107,27 @@ export function compactHistory(messages) {
     });
 }
 
+export function compactReadEvidence(evidence = []) {
+    return JSON.stringify(evidence.slice(-6).map(({ args, observation }) => ({
+        query: { collection: args.collection, filter: clip(args.filter, 150) },
+        observation: clip(JSON.stringify(observation), 450),
+    })));
+}
+
 export function selectAgentTools(state, registry, finalTurn = false) {
     if (finalTurn) return registry.tools.filter((entry) => entry.name === "finish");
+    if (registry.cancellationWorkflow && !state.hasAction) {
+        const status = state.cancellationQuote?.status;
+        if (!status)
+            return registry.tools.filter((entry) => entry.name === "prepare_cancellation");
+        if (status !== "ready")
+            return registry.tools.filter((entry) =>
+                ["prepare_cancellation", "ask_human", "finish", "db_query"].includes(entry.name));
+        return registry.tools.filter((entry) => ["prepare_cancellation", "browser_goto",
+            "browser_snapshot", "browser_click", "browser_check", "request_approval", "finish"].includes(entry.name));
+    }
+    if ((state.unchangedReadCount ?? 0) >= 3)
+        return registry.tools.filter((entry) => ["finish", "ask_human"].includes(entry.name));
     const names = new Set(["db_query", "ask_human", "remember", "finish", "browser_goto"]);
     const snapshot = state.latestSnapshot;
     if (snapshot || state.recoveryActive) {

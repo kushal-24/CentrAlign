@@ -7,10 +7,16 @@ import { createActionVerifier } from "../verification.js";
 export { createBrowserTools, browserSchemas } from "./browser.js";
 export { createSessionManager } from "./sessions.js";
 
-export function createTaskTools(manager, taskId, account) {
-    const verifier = createActionVerifier(account);
+export function createTaskTools(manager, taskId, account, task = "") {
+    const cancellationWorkflow = /\bcancel\b/i.test(task);
+    const verifier = createActionVerifier(account, { task });
     const browser = createBrowserTools(manager, taskId, { verifier });
     const control = createControlTools({
+        ...(cancellationWorkflow ? {
+            prepareCancellation: verifier.prepareCancellation,
+            onHumanAnswer: verifier.acceptCancellationChoice,
+            canAskHuman: () => verifier.getCancellationQuote()?.status !== "ready",
+        } : {}),
         requestAction: async (ref) => {
             const action = await inspectAction(manager.getSession(taskId), ref);
             if (action.details.risk !== "irreversible")
@@ -24,5 +30,6 @@ export function createTaskTools(manager, taskId, account) {
     const tools = [...browser.tools, createDbTool(account), ...control];
     const byName = new Map(tools.map((entry) => [entry.name, entry]));
 
-    return { tools, byName, verifyActions: verifier.verifyActions };
+    return { tools, byName, cancellationWorkflow, verifyActions: verifier.verifyActions,
+        verifyExistingCancellation: verifier.verifyExistingCancellation };
 }

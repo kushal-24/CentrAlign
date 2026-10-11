@@ -6,8 +6,11 @@ import { interrupt } from "@langchain/langgraph";
 export function createControlTools(options = {}) {
     let pendingQuestion;
     const askHuman = tool(
-        async ({ question, choices }) => {
-            pendingQuestion ??= { type: "input", questionId: randomUUID(), question, choices };
+        async ({ question, choices, revision }) => {
+            if (options.canAskHuman && !options.canAskHuman())
+                return JSON.stringify({ success: false, observation:
+                    "The booking and refund are resolved. Use request_approval on its cancellation control instead of asking for conversational confirmation." });
+            pendingQuestion ??= { type: "input", questionId: randomUUID(), question, choices, ...(revision ? { revision } : {}) };
             const response = interrupt(pendingQuestion);
             const parsed = z
                 .object({
@@ -20,10 +23,13 @@ export function createControlTools(options = {}) {
                 throw new Error("Invalid question response.");
 
             pendingQuestion = null;
+            options.onHumanAnswer?.(parsed.data.answer, choices);
             return JSON.stringify({
                 success: true,
                 humanQuestion: question,
                 humanAnswer: parsed.data.answer,
+                ...(revision ? { proposedRevision: revision, revisionAccepted:
+                    parsed.data.answer.toLowerCase() === revision.acceptChoice.toLowerCase() } : {}),
                 observation:
                     "User supplied clarification. This is not permission for a website submission.",
             });
@@ -36,8 +42,18 @@ export function createControlTools(options = {}) {
                 .object({
                     question: z.string().trim().min(1).max(1500),
                     choices: z.array(z.string().trim().min(1).max(300)).max(8).optional(),
+                    revision: z.object({
+                        reason: z.string().trim().min(1).max(500),
+                        acceptChoice: z.string().trim().min(1).max(300),
+                        changes: z.array(z.object({
+                            previous: z.string().min(1).max(500),
+                            replacement: z.string().min(1).max(500),
+                        }).strict()).min(1).max(8),
+                    }).strict().optional(),
                 })
-                .strict(),
+                .strict().refine((args) => !args.revision ||
+                    (args.choices?.length >= 2 && args.choices.includes(args.revision.acceptChoice)),
+                    "A revision requires explicit acceptance and alternative choices."),
         },
     );
 
@@ -81,11 +97,12 @@ export function createControlTools(options = {}) {
     );
 
     const finish = tool(
-        async ({ summary, criteria }) =>
+        async ({ summary, criteria, alreadySatisfied }) =>
             JSON.stringify({
                 success: true,
                 finish: summary,
                 criteria,
+                ...(alreadySatisfied ? { alreadySatisfied } : {}),
                 observation: "Finish requested; guard determines whether completion is supported.",
             }),
         {
@@ -98,9 +115,27 @@ export function createControlTools(options = {}) {
                     criterion: z.string().min(1).max(500),
                     met: z.boolean(),
                 }).strict()).min(1).max(8).optional(),
+                alreadySatisfied: z.object({
+                    kind: z.literal("cancel"),
+                    bookingCode: z.string().trim().min(1).max(100),
+                }).strict().optional(),
             }).strict(),
         },
     );
 
-    return [remember, finish, askHuman, requestApproval];
+    const tools = [remember, finish, askHuman, requestApproval];
+    if (options.prepareCancellation)
+        tools.push(tool(async (selection) => JSON.stringify({ success: true,
+            cancellationQuote: await options.prepareCancellation(selection),
+            observation: "Event names were fuzzy matched; the result identifies exact owned booking and event IDs. Ambiguous candidates require an exact booking-code choice from the user. This is not submission approval.",
+        }), {
+            name: "prepare_cancellation",
+            description: "Resolve a cancellation by event name, tolerating missing letters and punctuation. Prefer active bookings over old cancellations for the event. Supply a bookingCode only if the user supplied or explicitly selected it. Refunds use site time and INR.",
+            schema: z.object({
+                eventSearch: z.string().trim().min(1).max(300).optional(),
+                bookingCode: z.string().trim().min(1).max(100).optional(),
+            }).strict().refine((value) => Boolean(value.eventSearch || value.bookingCode),
+                "Provide an event name or booking code."),
+        }));
+    return tools;
 }

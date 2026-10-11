@@ -14,6 +14,7 @@ const schema = z.object({
     GEMINI_MODEL: z.string().trim().min(1).default("gemini-2.5-flash"),
     LLM_PROVIDER: z.enum(["gemini", "groq"]).default("gemini"),
     GROQ_API_KEY: z.string().trim().min(1).optional(),
+    GROQ_API_KEY_2: z.string().trim().min(1).optional(),
     GROQ_MODEL: z.string().trim().min(1).default("openai/gpt-oss-20b"),
     SITE_URL: z
         .string()
@@ -43,11 +44,12 @@ export function readConfig(
     { requireGemini = false, requireLLM = false, requireStudent = false } = {},
 ) {
     const input = { ...env };
-    for (const key of ["GEMINI_API_KEY", "GROQ_API_KEY", "STUDENT_EMAIL"]) {
+    for (const key of ["GEMINI_API_KEY", "GROQ_API_KEY", "GROQ_API_KEY_2", "STUDENT_EMAIL"]) {
         if (input[key] === "") delete input[key];
     }
     // Explicit selection wins; otherwise prefer the user's configured Groq key.
-    if (!input.LLM_PROVIDER && input.GROQ_API_KEY?.trim()) input.LLM_PROVIDER = "groq";
+    if (!input.LLM_PROVIDER && (input.GROQ_API_KEY?.trim() || input.GROQ_API_KEY_2?.trim()))
+        input.LLM_PROVIDER = "groq";
     const result = schema.safeParse(input);
     if (!result.success) {
         const keys = [...new Set(result.error.issues.map((issue) => issue.path.join(".")))];
@@ -57,7 +59,8 @@ export function readConfig(
     if (requireGemini && !result.data.GEMINI_API_KEY) missing.push("GEMINI_API_KEY");
     if (requireLLM) {
         const key = result.data.LLM_PROVIDER === "groq" ? "GROQ_API_KEY" : "GEMINI_API_KEY";
-        if (!result.data[key]) missing.push(key);
+        if (!result.data[key] && !(key === "GROQ_API_KEY" && result.data.GROQ_API_KEY_2))
+            missing.push(key);
     }
     if (requireStudent && !result.data.STUDENT_EMAIL) missing.push("STUDENT_EMAIL");
     if (missing.length)

@@ -16,6 +16,12 @@ export async function complete(state, context) {
             summary = "Profile updated and verified against the approved fields.";
     }
 
+    const revisions = (state.clarifications ?? []).filter((entry) => entry.accepted && entry.revision);
+    if (revisions.length && summary)
+        summary += ` Agreed changes: ${revisions.map((entry) =>
+            entry.revision.changes.map((change) => `${change.previous} → ${change.replacement}`).join("; ")
+        ).join("; ")}.`;
+
     const success = !state.failure && Boolean(state.finishSummary);
     return {
         status: success ? "done" : "failed",
@@ -24,6 +30,7 @@ export async function complete(state, context) {
             success,
             summary: success ? summary : (state.failure ?? "Task could not complete."),
             evidenceCount: state.evidenceCount,
+            ...(revisions.length ? { revisions } : {}),
             ...(state.recoveryFailure ? {
                 failure: {
                     ...state.recoveryFailure,

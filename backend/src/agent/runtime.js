@@ -56,7 +56,7 @@ export function createRuntime(options = {}) {
                         : createTaskTools(manager, taskId, {
                               userId: String(account._id),
                               email: account.email,
-                          }),
+                          }, state.task),
                     maxSteps: config.MAX_STEPS,
                     siteUrl: config.SITE_URL,
                     modelOptions: {
