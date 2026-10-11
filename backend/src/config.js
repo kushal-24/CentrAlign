@@ -12,7 +12,7 @@ const schema = z.object({
         .regex(/^mongodb(?:\+srv)?:\/\/\S+$/),
     GEMINI_API_KEY: z.string().trim().min(1).optional(),
     GEMINI_MODEL: z.string().trim().min(1).default("gemini-2.5-flash"),
-    LLM_PROVIDER: z.enum(["gemini", "groq"]).default("gemini"),
+    LLM_PROVIDER: z.enum(["gemini", "groq"]).default("groq"),
     GROQ_API_KEY: z.string().trim().min(1).optional(),
     GROQ_API_KEY_2: z.string().trim().min(1).optional(),
     GROQ_MODEL: z.string().trim().min(1).default("openai/gpt-oss-20b"),
@@ -28,6 +28,7 @@ const schema = z.object({
     AGENT_PORT: port.default(5000),
     STUDENT_EMAIL: z.string().email().optional(),
     LLM_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(60).default(4),
+    LLM_TOKENS_PER_MINUTE: z.coerce.number().int().min(1024).default(7000),
     GROQ_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(256).max(8192).default(2048),
     MAX_LLM_CALLS: z.coerce.number().int().min(1).max(200).default(30),
     MAX_STEPS: z.coerce.number().int().positive().default(25),
@@ -47,9 +48,8 @@ export function readConfig(
     for (const key of ["GEMINI_API_KEY", "GROQ_API_KEY", "GROQ_API_KEY_2", "STUDENT_EMAIL"]) {
         if (input[key] === "") delete input[key];
     }
-    // Explicit selection wins; otherwise prefer the user's configured Groq key.
-    if (!input.LLM_PROVIDER && (input.GROQ_API_KEY?.trim() || input.GROQ_API_KEY_2?.trim()))
-        input.LLM_PROVIDER = "groq";
+    // This setup uses Groq even if a legacy environment still selects Gemini.
+    input.LLM_PROVIDER = "groq";
     const result = schema.safeParse(input);
     if (!result.success) {
         const keys = [...new Set(result.error.issues.map((issue) => issue.path.join(".")))];

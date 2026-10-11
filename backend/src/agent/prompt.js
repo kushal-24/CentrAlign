@@ -3,6 +3,7 @@ import { compactSnapshot, compactReadEvidence } from "./context.js";
 export function getUnderstandPrompt() {
     return `Interpret the user's MatchDay task, without performing it.
 Return the requested goal, concrete success criteria, assumptions and taskKind.
+All four fields are required. taskKind must be exactly "read" or "action", never null. Use an empty array for assumptions when none are needed. Keep the response concise and within the requested schema.
 Derive success criteria only from the user's explicit request and necessary conditions for completing it safely. Keep them concrete and verifiable through MatchDay observations; do not add generic ticketing requirements.
 MatchDay supports bookings, cancellation/refunds, waitlists, profiles, ticket quantities and totals, and simulated inbox receipts. It does not provide assigned seats, real payment processing or external email delivery. Do not invent criteria requiring those features. If the user explicitly requests an unsupported feature, preserve that request as a limitation to clarify rather than silently dropping it or promising completion.
 For a booking, require the intended event/date and quantity, explicit approval before submission, and reporting the observed booking reference and total. Resolve ambiguous dates or missing details through clarification; do not invent their values.

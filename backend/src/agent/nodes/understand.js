@@ -8,8 +8,7 @@ export const understandingSchema = z
         goal: z.string().trim().min(1).max(1500),
         successCriteria: z.array(z.string().min(1).max(500)).min(1).max(8),
         assumptions: z.array(z.string().max(500)).max(8),
-        // Smaller models sometimes omit this; unknown kinds are treated as actions (the safer path).
-        taskKind: z.enum(["read", "action"]).optional(),
+        taskKind: z.enum(["read", "action"]),
     })
     .strict();
 

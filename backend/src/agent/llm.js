@@ -1,7 +1,5 @@
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatGroq } from "@langchain/groq";
 import { appendFileSync } from "node:fs";
-import { z } from "zod";
 import { readConfig } from "../config.js";
 
 let groqRequestIndex = 0;
@@ -27,7 +25,7 @@ function alternateGroqModels(models) {
 
 export function createLLM() {
     const config = readConfig(process.env, { requireLLM: true });
-    if (config.LLM_PROVIDER === "groq") {
+    {
         const keys = [...new Set([config.GROQ_API_KEY, config.GROQ_API_KEY_2].filter(Boolean))];
         const models = keys.map((apiKey) => new ChatGroq({
             apiKey,
@@ -39,12 +37,6 @@ export function createLLM() {
         return models.length === 1 ? models[0] : alternateGroqModels(models);
     }
 
-    return new ChatGoogleGenerativeAI({
-        apiKey: config.GEMINI_API_KEY,
-        model: config.GEMINI_MODEL,
-        temperature: 0,
-        maxRetries: 0,
-    });
 }
 
 export function isDailyQuotaError(error) {
@@ -86,12 +78,13 @@ export function retryAfterMs(error) {
     const value =
         typeof headers?.get === "function" ? headers.get("retry-after") : headers?.["retry-after"];
     const seconds = Number(value);
-    return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds * 1000, 20000) : 0;
+    return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 0;
 }
 
 // Sliding-window limiter: at most `maxPerMinute` model requests in any 60 seconds.
 export function createRateLimiter({
     maxPerMinute = 4,
+    maxTokensPerMinute = Infinity,
     now = () => Date.now(),
     sleep = (milliseconds, signal) =>
         new Promise((resolve, reject) => {
@@ -109,15 +102,25 @@ export function createRateLimiter({
     const stamps = [];
 
     return {
-        async acquire(signal) {
+        async acquire(signal, tokens = 0) {
+            if (tokens > maxTokensPerMinute) {
+                const error = new Error("Estimated request exceeds the configured per-minute token budget. Reduce context or output tokens.");
+                error.code = "LLM_REQUEST_TOO_LARGE";
+                throw error;
+            }
             for (;;) {
+                signal?.throwIfAborted();
                 const current = now();
-                while (stamps.length && current - stamps[0] >= 60000) stamps.shift();
-                if (stamps.length < maxPerMinute) {
-                    stamps.push(current);
+                while (stamps.length && current - stamps[0].time >= 60000) stamps.shift();
+                const spacing = stamps.length ? stamps.at(-1).time + Math.ceil(60000 / maxPerMinute) - current : 0;
+                const tokenTotal = stamps.reduce((sum, entry) => sum + entry.tokens, 0);
+                if (stamps.length < maxPerMinute && spacing <= 0 && tokenTotal + tokens <= maxTokensPerMinute) {
+                    stamps.push({ time: current, tokens });
                     return;
                 }
-                await sleep(60000 - (current - stamps[0]) + 50, signal);
+                const wait = stamps.length >= maxPerMinute || tokenTotal + tokens > maxTokensPerMinute
+                    ? 60000 - (current - stamps[0].time) + 50 : spacing;
+                await sleep(wait, signal);
             }
         },
     };
@@ -171,6 +174,7 @@ function usageLogger(attempt) {
 
 export async function invokeModel(model, input, options = {}) {
     const attempts = Math.min(options.attempts ?? 4, 4);
+    let jsonValidationRetries = 0;
     const delay =
         options.delay ??
         ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
@@ -183,7 +187,10 @@ export async function invokeModel(model, input, options = {}) {
                 throw error;
             }
             // Every attempt is a provider request, so each one waits for the limiter.
-            await options.limiter?.acquire(options.signal);
+            // Conservative estimate plus a reserve for tool schemas and completion tokens.
+            const estimatedTokens = Math.ceil(JSON.stringify(input).length / 3) +
+                (options.outputTokenReserve ?? 2048) + 2000;
+            await options.limiter?.acquire(options.signal, estimatedTokens);
             if (options.budget) {
                 if (options.budget.count >= options.budget.limit) {
                     const error = new Error("Agent reasoning budget exceeded. No further model requests were made.");
@@ -196,9 +203,12 @@ export async function invokeModel(model, input, options = {}) {
             const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
             return await model.invoke(input, { signal, callbacks: usageLogger(attempt) });
         } catch (error) {
+            const code = error?.error?.error?.code ?? error?.error?.code ?? error?.code;
+            const retryJsonValidation = Number(error?.status) === 400 &&
+                code === "json_validate_failed" && jsonValidationRetries < 1;
             if (
                 options.signal?.aborted ||
-                !isTransientModelError(error) ||
+                (!isTransientModelError(error) && !retryJsonValidation) ||
                 attempt === attempts - 1
             )
                 throw new Error(
@@ -206,48 +216,14 @@ export async function invokeModel(model, input, options = {}) {
                     { cause: error },
                 );
 
+            if (retryJsonValidation) jsonValidationRetries += 1;
             await delay(Math.max(Math.min(1000 * 2 ** attempt, 4000), retryAfterMs(error)));
         }
     }
     throw new Error("Model request failed.");
 }
 
-export function geminiToolSchema(schema) {
-    if (Array.isArray(schema)) return schema.map(geminiToolSchema);
-    if (!schema || typeof schema !== "object") return schema;
-
-    const result = {};
-    for (const [key, value] of Object.entries(schema)) {
-        if (
-            ["$schema", "additionalProperties", "exclusiveMinimum", "exclusiveMaximum"].includes(
-                key,
-            )
-        )
-            continue;
-        result[key] = geminiToolSchema(value);
-    }
-    // Gemini rejects these JSON Schema keywords. Integer bounds can be expressed inclusively.
-    if (schema.exclusiveMinimum !== undefined && schema.type === "integer")
-        result.minimum = Math.floor(schema.exclusiveMinimum) + 1;
-    if (schema.exclusiveMaximum !== undefined && schema.type === "integer")
-        result.maximum = Math.ceil(schema.exclusiveMaximum) - 1;
-    return result;
-}
-
 export function bindAgentTools(model, tools) {
-    // Groq consumes the original tool schemas; Gemini needs its schema adapter.
-    if (model instanceof ChatGroq || model._llmType?.() === "groq")
-        return model.bindTools(tools, { tool_choice: "required", parallel_tool_calls: false });
-
-    const declarations = tools.map((entry) => ({
-        type: "function",
-        function: {
-            name: entry.name,
-            description: entry.description,
-            parameters: geminiToolSchema(z.toJSONSchema(entry.schema)),
-        },
-    }));
-
-    // Only the advertised schemas change; execution still uses the original strict Zod tools.
-    return model.bindTools(declarations, { tool_choice: "any" });
+    // Send original Zod schemas to Groq; no Gemini-specific schema rewriting.
+    return model.bindTools(tools, { tool_choice: "required", parallel_tool_calls: false });
 }

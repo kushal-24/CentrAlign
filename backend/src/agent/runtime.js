@@ -9,6 +9,26 @@ import { createAgentGraph } from "./graph.js";
 import { createSessionManager, createTaskTools } from "./tools/index.js";
 import * as runs from "./runs.js";
 
+function providerFailureDetails(error) {
+    const cause = error.cause ?? error;
+    const status = Number(cause.status ?? cause.statusCode ?? cause.response?.status);
+    if (!Number.isInteger(status) || status < 400 || status > 599) return {};
+    const body = cause.error?.error ?? cause.error ?? {};
+    const code = String(body.code ?? cause.code ?? "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+    // Keep the explanation, never failed_generation, request bodies or headers.
+    let message = String(body.message ?? cause.message ?? "").split(/\r?\n/)[0];
+    for (const [name, value] of Object.entries(process.env)) {
+        if (/KEY|TOKEN|SECRET|PASSWORD|URI/i.test(name) && value?.length >= 6)
+            message = message.split(value).join("[redacted]");
+    }
+    message = message
+        .replace(/https?:\/\/\S+/gi, "[url]")
+        .replace(/\b(?:gsk_|sk-)[a-zA-Z0-9_-]+/g, "[redacted]")
+        .replace(/\bBearer\s+\S+/gi, "Bearer [redacted]")
+        .slice(0, 500);
+    return { providerStatus: status, providerCode: code || null, providerMessage: message };
+}
+
 export function createRuntime(options = {}) {
     const config = options.config ?? readConfig(process.env, { requireStudent: true });
     const manager = options.manager ?? createSessionManager({ config });
@@ -19,7 +39,10 @@ export function createRuntime(options = {}) {
         options.limiter ??
         (options.model
             ? undefined
-            : createRateLimiter({ maxPerMinute: config.LLM_REQUESTS_PER_MINUTE ?? 4 }));
+            : createRateLimiter({
+                maxPerMinute: config.LLM_REQUESTS_PER_MINUTE ?? 4,
+                maxTokensPerMinute: config.LLM_TOKENS_PER_MINUTE ?? 7000,
+            }));
     const checkpointer = new MemorySaver();
     const graph = createAgentGraph({
         checkpointer,
@@ -61,6 +84,7 @@ export function createRuntime(options = {}) {
                     siteUrl: config.SITE_URL,
                     modelOptions: {
                         limiter,
+                        outputTokenReserve: config.GROQ_MAX_OUTPUT_TOKENS,
                         ...options.modelOptions,
                         budget: { count: 0, limit: config.MAX_LLM_CALLS ?? 30 },
                         signal: entry.abort.signal,
@@ -111,6 +135,7 @@ export function createRuntime(options = {}) {
                 }
             }
         } catch (error) {
+            const providerDetails = providerFailureDetails(error);
             // Raw provider/browser errors can contain credentials or response payloads.
             await store.recordProgress(taskId, {
                 status: "failed",
@@ -121,12 +146,17 @@ export function createRuntime(options = {}) {
                         ? "Task reasoning budget exhausted. Inspect the trace and any action evidence before retrying."
                         : isDailyQuotaError(error.cause)
                         ? "Gemini daily quota exhausted. Retry after quota reset or update local provider configuration."
+                        : providerDetails.providerStatus === 400
+                        ? "The provider rejected the model request (HTTP 400). See providerCode and providerMessage for details."
+                        : providerDetails.providerStatus === 429
+                        ? "The provider rate limit stopped the task. See providerMessage for the reported limit; inspect action evidence before retrying."
                         : "Task failed. Check configuration/provider/site availability or start a new task after restart.",
                     ...(entry.state?.verification ? { evidence: entry.state.verification } : {}),
                     node: error.executionNode ?? "runtime",
                     providerStatus: Number.isInteger(error.cause?.status)
                         ? error.cause.status
                         : null,
+                    ...providerDetails,
                 },
             });
             await store.appendTrace(taskId, {
