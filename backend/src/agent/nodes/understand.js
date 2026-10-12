@@ -17,7 +17,8 @@ export async function understand(state, context) {
     const response = await invokeModel(
         model,
         [new SystemMessage(getUnderstandPrompt()), new HumanMessage(state.task)],
-        context.modelOptions,
+        { ...context.modelOptions, outputTokenReserve: 2000,
+            requestSchema: z.toJSONSchema(understandingSchema) },
     );
 
     const parsed = understandingSchema.parse(response);

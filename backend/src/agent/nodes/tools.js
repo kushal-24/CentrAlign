@@ -1,6 +1,6 @@
 import { ToolMessage } from "@langchain/core/messages";
 import { isGraphInterrupt } from "@langchain/langgraph";
-import { compactObservation } from "../context.js";
+import { compactObservation, snapshotReadKey } from "../context.js";
 import { repeatKey } from "./guard.js";
 import { validateQuery, queryErrorObservation } from "../tools/db.js";
 
@@ -102,6 +102,19 @@ export async function runTool(state, context) {
     if (observation.snapshot) {
         update.latestSnapshot = observation.snapshot;
         update.observationWindow = observation.observationWindow ?? {};
+        if (call.name === "browser_snapshot" && observation.success) {
+            const unchanged = snapshotReadKey(observation.snapshot, update.observationWindow) ===
+                snapshotReadKey(state.latestSnapshot, state.observationWindow ?? {});
+            update.unchangedReadCount = unchanged ? (state.unchangedReadCount ?? 0) + 1 : 0;
+            if (unchanged)
+                update.warning = "This snapshot returned no new facts. Use current refs to take the next appropriate action; read another section only for a specific omitted fact. After three unchanged reads, finish or ask_human.";
+            else if (state.warning?.startsWith("This snapshot returned no new facts."))
+                update.warning = null;
+        } else if (observation.success) {
+            update.unchangedReadCount = 0;
+            if (state.warning?.startsWith("This snapshot returned no new facts."))
+                update.warning = null;
+        }
     }
     if (call.name === "db_query" && observation.success) {
         const key = callKey(call);

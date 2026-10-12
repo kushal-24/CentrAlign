@@ -12,7 +12,8 @@ export async function plan(state, context) {
     const response = await invokeModel(
         model,
         [new SystemMessage(getPlanPrompt(state)), new HumanMessage(state.task)],
-        context.modelOptions,
+        { ...context.modelOptions, outputTokenReserve: 2000,
+            requestSchema: z.toJSONSchema(planSchema) },
     );
 
     return planSchema.parse(response);

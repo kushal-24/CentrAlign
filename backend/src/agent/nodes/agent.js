@@ -1,15 +1,16 @@
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 import { getAgentPrompt } from "../prompt.js";
 import { compactHistory, selectAgentTools } from "../context.js";
-import { invokeModel, bindAgentTools, isMalformedToolCall, salvageFinishText } from "../llm.js";
+import { invokeModel, bindAgentTools, isMalformedToolCall, salvageFinishText, estimateRequestTokens } from "../llm.js";
 
-export function buildAgentMessages(state, context) {
+export function buildAgentMessages(state, context, maxPairs = 2, tight = false) {
     // Keep complete AI/tool pairs so bounded history never leaves orphan ToolMessages.
     return [
-        new SystemMessage(getAgentPrompt(state, context)),
+        new SystemMessage(getAgentPrompt(state, tight ? { ...context, tight } : context)),
         new HumanMessage(state.task),
-        ...compactHistory(state.messages),
+        ...compactHistory(state.messages, maxPairs),
     ];
 }
 
@@ -23,14 +24,28 @@ export async function callAgent(state, context) {
     const finalTurn = state.stepCount === context.maxSteps;
     const tools = selectAgentTools(state, context.registry, finalTurn);
     const model = bindAgentTools(context.model, tools);
+    const modelOptions = {
+        ...context.modelOptions,
+        requestSchema: tools.map((entry) => ({ type: "function", function: {
+            name: entry.name, description: entry.description,
+            parameters: z.toJSONSchema(entry.schema),
+        } })),
+        ...(state.recoveryActive ? { attempts: 1 } : {}),
+    };
+    let messages = buildAgentMessages(state, context);
+    const tokenBudget = modelOptions.limiter?.maxTokensPerMinute ?? Infinity;
+    // Drop complete optional pairs only. Current state, approvals and evidence stay in the prompt.
+    // Last resort: a smaller page view; the prompt tells the model to use browser_snapshot for omitted parts.
+    for (const [maxPairs, tight] of [[1, false], [0, false], [0, true]]) {
+        if (estimateRequestTokens(messages, modelOptions) <= tokenBudget) break;
+        messages = buildAgentMessages(state, context, maxPairs, tight);
+    }
     let response;
     try {
         response = await invokeModel(
             model,
-            buildAgentMessages(state, context),
-            state.recoveryActive
-                ? { ...context.modelOptions, attempts: 1 }
-                : context.modelOptions,
+            messages,
+            modelOptions,
         );
     } catch (error) {
         if (!isMalformedToolCall(error.cause)) throw error;

@@ -11,7 +11,7 @@ function observedHref(value, pageUrl) {
         ? `${url.pathname}${url.search}${url.hash}` : url.href;
 }
 
-export function compactSnapshot(snapshot, task, window = {}) {
+export function compactSnapshot(snapshot, task, window = {}, limits = { elements: 2000, text: 1200 }) {
     if (!snapshot) return "none";
     const terms = new Set((task.toLowerCase().match(/[a-z0-9]{4,}/g) ?? []));
     const relevant = (text) => [...terms].some((term) => text.toLowerCase().includes(term));
@@ -29,7 +29,7 @@ export function compactSnapshot(snapshot, task, window = {}) {
     let size = 0;
     for (const { element } of candidates) {
         const line = `[${element.ref}] ${element.role} ${JSON.stringify(element.name)}${element.type ? ` ${element.type}` : ""}${element.value ? ` value=${JSON.stringify(element.value)}` : ""}${element.checked === null || element.checked === undefined ? "" : ` checked=${element.checked}`}${element.disabled ? " disabled" : ""}${element.readOnly ? " readonly" : ""}${element.risk ? ` risk=${element.risk}` : ""}${element.href ? ` href=${observedHref(element.href, snapshot.url)}` : ""}${element.options ? ` options=${JSON.stringify(element.options.map(({ value, label, disabled }) => ({ value, label, ...(disabled ? { disabled: true } : {}) })))}` : ""}`;
-        if (size + line.length > 2000 && lines.length) break;
+        if (size + line.length > limits.elements && lines.length) break;
         lines.push(line);
         size += line.length;
     }
@@ -40,9 +40,9 @@ export function compactSnapshot(snapshot, task, window = {}) {
     const important = blocks.filter((block) => relevant(block) ||
         /refund|policy|sold out|postpon|closed|remaining|total|price|limit|conflict|confirm|cancel|error|invalid/i.test(block));
     const visibleText = textOffset === undefined
-        ? clip([...new Set([...important, ...blocks])].join(" "), 1200)
-        : clip(text.slice(textOffset), 1200);
-    const omitted = lines.length < candidates.length || text.length > 1200 || snapshot.truncated;
+        ? clip([...new Set([...important, ...blocks])].join(" "), limits.text)
+        : clip(text.slice(textOffset), limits.text);
+    const omitted = lines.length < candidates.length || text.length > limits.text || snapshot.truncated;
 
     return [
         `URL: ${snapshot.url} | ${snapshot.title}`,
@@ -80,7 +80,7 @@ export function compactObservation(observation, limit = 3500) {
     return facts;
 }
 
-export function compactHistory(messages) {
+export function compactHistory(messages, maxPairs = 2) {
     // Keep at most two complete tool-call/result pairs. Full observations remain in the trace.
     const pairs = [];
     for (let index = 0; index < messages.length - 1; index += 1) {
@@ -91,8 +91,8 @@ export function compactHistory(messages) {
             index += 1;
         }
     }
-    return pairs.slice(-2).flatMap(([call, result], index, recent) => {
-        if (index === recent.length - 1) return [call, result];
+    if (!maxPairs) return [];
+    return pairs.slice(-maxPairs).flatMap(([call, result]) => {
         let observation;
         try {
             observation = compactObservation(JSON.parse(result.content), 600);
@@ -107,8 +107,32 @@ export function compactHistory(messages) {
     });
 }
 
-export function compactReadEvidence(evidence = []) {
-    return JSON.stringify(evidence.slice(-6).map(({ args, observation }) => ({
+export function snapshotReadKey(snapshot, window = {}) {
+    if (!snapshot) return null;
+    // Refs refresh on every read; compare the visible facts rather than ref numbers.
+    return JSON.stringify({
+        url: snapshot.url, siteTime: snapshot.siteTime, alerts: snapshot.alerts,
+        text: snapshot.text, truncated: snapshot.truncated, window,
+        elements: (snapshot.elements ?? []).map(({ ref, ...facts }) => facts),
+    });
+}
+
+export function compactVerification(verification) {
+    // Passed checks add nothing; keep failures plus the facts needed to summarize the outcome.
+    const [entry] = verification.actions ?? [];
+    return clip(JSON.stringify({
+        success: verification.success,
+        ...(verification.success ? {} : {
+            failedChecks: (verification.checks ?? []).filter((check) => !check.passed).map((check) => check.name),
+        }),
+        action: entry?.action,
+        records: entry?.records,
+        outbox: entry?.outbox?.map(({ subject, body }) => ({ subject, body })),
+    }), 2500);
+}
+
+export function compactReadEvidence(evidence = [], count = 6) {
+    return JSON.stringify(evidence.slice(-count).map(({ args, observation }) => ({
         query: { collection: args.collection, filter: clip(args.filter, 150) },
         observation: clip(JSON.stringify(observation), 450),
     })));
@@ -116,6 +140,8 @@ export function compactReadEvidence(evidence = []) {
 
 export function selectAgentTools(state, registry, finalTurn = false) {
     if (finalTurn) return registry.tools.filter((entry) => entry.name === "finish");
+    if ((state.unchangedReadCount ?? 0) >= 3)
+        return registry.tools.filter((entry) => ["finish", "ask_human"].includes(entry.name));
     if (registry.cancellationWorkflow && !state.hasAction) {
         const status = state.cancellationQuote?.status;
         if (!status)
@@ -126,8 +152,6 @@ export function selectAgentTools(state, registry, finalTurn = false) {
         return registry.tools.filter((entry) => ["prepare_cancellation", "browser_goto",
             "browser_snapshot", "browser_click", "browser_check", "request_approval", "finish"].includes(entry.name));
     }
-    if ((state.unchangedReadCount ?? 0) >= 3)
-        return registry.tools.filter((entry) => ["finish", "ask_human"].includes(entry.name));
     const names = new Set(["db_query", "ask_human", "remember", "finish", "browser_goto"]);
     const snapshot = state.latestSnapshot;
     if (snapshot || state.recoveryActive) {

@@ -14,7 +14,6 @@ const schema = z.object({
     GEMINI_MODEL: z.string().trim().min(1).default("gemini-2.5-flash"),
     LLM_PROVIDER: z.enum(["gemini", "groq"]).default("groq"),
     GROQ_API_KEY: z.string().trim().min(1).optional(),
-    GROQ_API_KEY_2: z.string().trim().min(1).optional(),
     GROQ_MODEL: z.string().trim().min(1).default("openai/gpt-oss-20b"),
     SITE_URL: z
         .string()
@@ -45,7 +44,7 @@ export function readConfig(
     { requireGemini = false, requireLLM = false, requireStudent = false } = {},
 ) {
     const input = { ...env };
-    for (const key of ["GEMINI_API_KEY", "GROQ_API_KEY", "GROQ_API_KEY_2", "STUDENT_EMAIL"]) {
+    for (const key of ["GEMINI_API_KEY", "GROQ_API_KEY", "STUDENT_EMAIL"]) {
         if (input[key] === "") delete input[key];
     }
     // This setup uses Groq even if a legacy environment still selects Gemini.
@@ -59,7 +58,7 @@ export function readConfig(
     if (requireGemini && !result.data.GEMINI_API_KEY) missing.push("GEMINI_API_KEY");
     if (requireLLM) {
         const key = result.data.LLM_PROVIDER === "groq" ? "GROQ_API_KEY" : "GEMINI_API_KEY";
-        if (!result.data[key] && !(key === "GROQ_API_KEY" && result.data.GROQ_API_KEY_2))
+        if (!result.data[key])
             missing.push(key);
     }
     if (requireStudent && !result.data.STUDENT_EMAIL) missing.push("STUDENT_EMAIL");

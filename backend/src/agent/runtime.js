@@ -136,6 +136,12 @@ export function createRuntime(options = {}) {
             }
         } catch (error) {
             const providerDetails = providerFailureDetails(error);
+            const cause = error.cause ?? error;
+            const localCodes = new Set(["LLM_REQUEST_TOO_LARGE", "LLM_BUDGET_EXCEEDED", "ABORT_ERR", "ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND"]);
+            const errorCode = localCodes.has(cause.code) ? cause.code
+                : cause.name === "TimeoutError" ? "LLM_TIMEOUT"
+                : cause.name === "AbortError" ? "LLM_ABORTED"
+                : !providerDetails.providerStatus ? "LOCAL_EXECUTION_ERROR" : null;
             // Raw provider/browser errors can contain credentials or response payloads.
             await store.recordProgress(taskId, {
                 status: "failed",
@@ -144,6 +150,10 @@ export function createRuntime(options = {}) {
                     success: false,
                     summary: error.cause?.code === "LLM_BUDGET_EXCEEDED"
                         ? "Task reasoning budget exhausted. Inspect the trace and any action evidence before retrying."
+                        : errorCode === "LLM_REQUEST_TOO_LARGE"
+                        ? "The request still exceeds the local token budget after optional history was reduced. No model request was sent for this step. See estimatedTokens and tokenBudget."
+                        : errorCode === "LLM_TIMEOUT"
+                        ? "The model request timed out. Inspect action evidence before retrying."
                         : isDailyQuotaError(error.cause)
                         ? "Gemini daily quota exhausted. Retry after quota reset or update local provider configuration."
                         : providerDetails.providerStatus === 400
@@ -157,6 +167,10 @@ export function createRuntime(options = {}) {
                         ? error.cause.status
                         : null,
                     ...providerDetails,
+                    ...(errorCode ? { errorCode } : {}),
+                    ...(errorCode === "LLM_REQUEST_TOO_LARGE" ? {
+                        estimatedTokens: cause.estimatedTokens, tokenBudget: cause.tokenBudget,
+                    } : {}),
                 },
             });
             await store.appendTrace(taskId, {

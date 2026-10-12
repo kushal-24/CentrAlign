@@ -1,42 +1,17 @@
 import { ChatGroq } from "@langchain/groq";
 import { appendFileSync } from "node:fs";
+import { setTimeout as sleep } from "node:timers/promises";
 import { readConfig } from "../config.js";
-
-let groqRequestIndex = 0;
-
-// Select at invocation time, including structured calls, tool calls and retries.
-// The shared counter alternates requests across tasks in this server process.
-function alternateGroqModels(models) {
-    return {
-        _llmType: () => "groq",
-        invoke(input, options) {
-            const selected = models[groqRequestIndex % models.length];
-            groqRequestIndex = (groqRequestIndex + 1) % models.length;
-            return selected.invoke(input, options);
-        },
-        bindTools(...args) {
-            return alternateGroqModels(models.map((model) => model.bindTools(...args)));
-        },
-        withStructuredOutput(...args) {
-            return alternateGroqModels(models.map((model) => model.withStructuredOutput(...args)));
-        },
-    };
-}
 
 export function createLLM() {
     const config = readConfig(process.env, { requireLLM: true });
-    {
-        const keys = [...new Set([config.GROQ_API_KEY, config.GROQ_API_KEY_2].filter(Boolean))];
-        const models = keys.map((apiKey) => new ChatGroq({
-            apiKey,
-            model: config.GROQ_MODEL,
-            maxTokens: config.GROQ_MAX_OUTPUT_TOKENS,
-            temperature: 0,
-            maxRetries: 0,
-        }));
-        return models.length === 1 ? models[0] : alternateGroqModels(models);
-    }
-
+    return new ChatGroq({
+        apiKey: config.GROQ_API_KEY,
+        model: config.GROQ_MODEL,
+        maxTokens: config.GROQ_MAX_OUTPUT_TOKENS,
+        temperature: 0,
+        maxRetries: 0,
+    });
 }
 
 export function isDailyQuotaError(error) {
@@ -74,11 +49,17 @@ export function salvageFinishText(error) {
 
 // Provider-requested wait (Retry-After seconds), capped so one call cannot stall a task for long.
 export function retryAfterMs(error) {
+    return Math.min(providerRetryDelayMs(error), 20000);
+}
+
+export function providerRetryDelayMs(error, now = Date.now()) {
     const headers = error?.headers;
     const value =
         typeof headers?.get === "function" ? headers.get("retry-after") : headers?.["retry-after"];
     const seconds = Number(value);
-    return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 0;
+    if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+    const date = Date.parse(value);
+    return Number.isFinite(date) ? Math.max(0, date - now) : 0;
 }
 
 // Sliding-window limiter: at most `maxPerMinute` model requests in any 60 seconds.
@@ -102,10 +83,13 @@ export function createRateLimiter({
     const stamps = [];
 
     return {
+        maxTokensPerMinute,
         async acquire(signal, tokens = 0) {
             if (tokens > maxTokensPerMinute) {
                 const error = new Error("Estimated request exceeds the configured per-minute token budget. Reduce context or output tokens.");
                 error.code = "LLM_REQUEST_TOO_LARGE";
+                error.estimatedTokens = tokens;
+                error.tokenBudget = maxTokensPerMinute;
                 throw error;
             }
             for (;;) {
@@ -175,9 +159,11 @@ function usageLogger(attempt) {
 export async function invokeModel(model, input, options = {}) {
     const attempts = Math.min(options.attempts ?? 4, 4);
     let jsonValidationRetries = 0;
+    let retryWaitMs = 0;
+    const maxRetryWaitMs = 60000;
     const delay =
         options.delay ??
-        ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+        ((milliseconds, signal) => sleep(milliseconds, undefined, { signal }));
 
     for (let attempt = 0; attempt < attempts; attempt += 1) {
         try {
@@ -187,9 +173,7 @@ export async function invokeModel(model, input, options = {}) {
                 throw error;
             }
             // Every attempt is a provider request, so each one waits for the limiter.
-            // Conservative estimate plus a reserve for tool schemas and completion tokens.
-            const estimatedTokens = Math.ceil(JSON.stringify(input).length / 3) +
-                (options.outputTokenReserve ?? 2048) + 2000;
+            const estimatedTokens = estimateRequestTokens(input, options);
             await options.limiter?.acquire(options.signal, estimatedTokens);
             if (options.budget) {
                 if (options.budget.count >= options.budget.limit) {
@@ -201,7 +185,10 @@ export async function invokeModel(model, input, options = {}) {
             }
             const timeout = AbortSignal.timeout(options.timeout ?? 30000);
             const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
-            return await model.invoke(input, { signal, callbacks: usageLogger(attempt) });
+            return await model.invoke(input, {
+                signal, callbacks: usageLogger(attempt),
+                max_tokens: options.outputTokenReserve ?? 2048,
+            });
         } catch (error) {
             const code = error?.error?.error?.code ?? error?.error?.code ?? error?.code;
             const retryJsonValidation = Number(error?.status) === 400 &&
@@ -217,10 +204,22 @@ export async function invokeModel(model, input, options = {}) {
                 );
 
             if (retryJsonValidation) jsonValidationRetries += 1;
-            await delay(Math.max(Math.min(1000 * 2 ** attempt, 4000), retryAfterMs(error)));
+            const waitMs = Math.max(Math.min(1000 * 2 ** attempt, 4000), providerRetryDelayMs(error));
+            if (retryWaitMs + waitMs > maxRetryWaitMs)
+                throw new Error("Model retry wait budget exceeded.", { cause: error });
+            retryWaitMs += waitMs;
+            options.signal?.throwIfAborted();
+            await delay(waitMs, options.signal);
         }
     }
     throw new Error("Model request failed.");
+}
+
+export function estimateRequestTokens(input, options = {}) {
+    // Includes advertised schemas; a margin covers message framing. Not an exact tokenizer.
+    return Math.ceil((JSON.stringify(input).length +
+        JSON.stringify(options.requestSchema ?? {}).length) / 3) +
+        (options.outputTokenReserve ?? 2048) + 128;
 }
 
 export function bindAgentTools(model, tools) {
